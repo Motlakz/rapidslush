@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: { default: `${site.name}: a slushy arcade game for Android`, template: `%s | ${site.name}` },
   description:
     'Rapid Slush is a free-to-play arcade game: hold a tap, let go on the line and serve the order before the belt moves. 130 levels on two machines.',
-  icons: { icon: '/favicon.svg' },
+  icons: { icon: '/favicon.svg', apple: '/apple-touch-icon.png' },
   openGraph: { type: 'website', siteName: site.name, images: [{ url: '/share.jpg', width: 1200, height: 630 }] },
   twitter: { card: 'summary_large_image' },
   // canonical: set once the domain exists
