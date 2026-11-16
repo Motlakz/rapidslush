@@ -1,0 +1,164 @@
+/* Page CSS: only what sits inside a visual and the kit lacks (system.md). */
+
+.frame.shop { --ratio: 28.6%; }
+
+/* policy pages: a document grows with its text, so it is the one section allowed past two screens */
+main > section.section--doc { height: auto; min-height: 100svh; }
+.doc > h1 { font-size: var(--t-h2); margin-bottom: var(--s-5); }
+.doc__part { margin-top: var(--s-8); }
+.doc__part > h2 { font-size: var(--t-h3); margin-bottom: var(--s-4); }
+.doc :is(p, li) { font-size: 16px; line-height: 1.7; }
+.doc ul { padding-left: 1.2em; }
+.doc li + li { margin-top: var(--s-2); }
+.doc table { width: 100%; border-collapse: collapse; margin-top: var(--s-4); }
+.doc :is(th, td) { text-align: left; padding: var(--s-3) var(--s-2); border-bottom: 1px solid var(--line); font-size: 16px; }
+.doc td.num { font-family: var(--font-mono); }
+
+/* the closing wordmark, sized for Caprasimo (a wide face): "Rapid Slush" runs about 6.3em, so it fits the .wrap */
+.close__word { font-size: clamp(48px, 13vw, 188px); }
+@media (max-width: 639px) { .close__word { font-size: 12.8vw; } }
+
+
+/* ---------- the stage: the 3D Slush Line, playable, pinned through the scroll ---------- */
+.stage {
+  --st-ink: #25233a; --st-cream: #e8d9c1;
+  position: relative; height: 100svh; min-height: 560px; overflow: hidden;
+  background: var(--st-cream); color: var(--st-ink);
+}
+.stage__canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage:not(.is-ready) .stage__canvas { opacity: 0; }
+.stage:not(.is-ready)::after {
+  content: ""; position: absolute; left: 50%; top: 58%; width: 56px; height: 56px; margin: -28px; border-radius: 50%;
+  border: 4px solid rgba(37,35,58,.15); border-top-color: #ff6b8a; animation: st-spin .8s linear infinite;
+}
+@keyframes st-spin { to { transform: rotate(1turn); } }
+
+.stage__hero {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+  padding-top: var(--nav);
+}
+.stage__hero > * { pointer-events: auto; max-width: min(30rem, 36vw); }
+.stage__hero > .stage__title { max-width: min(40rem, 38vw); }
+.stage__title {
+  font-family: var(--rs-display); font-weight: 400; color: var(--st-ink);
+  font-size: clamp(44px, 4.5vw, 80px); line-height: 1; letter-spacing: -0.01em; margin: 0 0 var(--s-5);
+}
+.stage__lead { font-size: clamp(17px, 1.35vw, 20px); line-height: 1.5; color: #4a4766; margin: 0 0 var(--s-6); max-width: 26rem; }
+.stage__hint {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: var(--s-6);
+  font-size: 15px; font-weight: 600; color: var(--st-ink);
+  background: rgba(255,249,241,.8); padding: 8px 14px 8px 10px; border-radius: 999px; backdrop-filter: blur(6px);
+  transition: opacity .4s;
+}
+.stage__hint.is-done { opacity: .55; }
+.stage__dot { width: 10px; height: 10px; border-radius: 50%; background: #ff6b8a; box-shadow: 0 0 0 0 rgba(255,107,138,.6); animation: st-ping 1.6s ease-out infinite; }
+@keyframes st-ping { to { box-shadow: 0 0 0 12px rgba(255,107,138,0); } }
+
+.stage__taps { position: absolute; inset: 0; pointer-events: none; }
+.stage.is-story .stage__taps { visibility: hidden; }
+.stage__tap {
+  position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none;
+  background: transparent; border: 0; border-radius: 28px; -webkit-tap-highlight-color: transparent;
+}
+.stage__tap:focus-visible { outline: 3px solid #ff6b8a; outline-offset: 2px; }
+.stage__tap.is-cue::after {
+  content: ""; position: absolute; left: 50%; bottom: 8%; width: 64px; height: 64px; margin-left: -32px; border-radius: 50%;
+  border: 3px solid #ff6b8a; animation: st-cue 1.6s ease-out infinite;
+}
+@keyframes st-cue { from { transform: scale(.5); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+
+.stage__float {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); pointer-events: none; visibility: hidden;
+  font-family: var(--rs-display); font-size: clamp(22px, 2.2vw, 32px); white-space: nowrap;
+  padding: .2em .7em .25em; border-radius: 999px; background: #fff9f1; color: var(--st-ink); box-shadow: 0 10px 30px rgba(37,35,58,.18);
+}
+.stage__float[data-tone="perfect"] { background: #ffc857; }
+.stage__float[data-tone="miss"] { background: #25233a; color: #fff9f1; }
+.stage__float--story { left: 50%; top: 22%; }
+
+.stage__hud {
+  position: absolute; right: var(--gutter, 24px); bottom: 24px; display: flex; gap: 8px; align-items: center;
+  font-family: var(--rs-text); font-size: 14px; font-weight: 600;
+}
+.stage__hud > * { background: rgba(255,249,241,.85); backdrop-filter: blur(6px); padding: 8px 14px; border-radius: 999px; color: var(--st-ink); }
+.stage__hud > * { white-space: nowrap; }
+.stage__hud b { font-family: var(--rs-num); font-weight: 600; margin-left: 4px; }
+.stage__mute { border: 0; cursor: pointer; font: inherit; }
+.stage__mute[aria-pressed="true"] { opacity: .6; }
+
+.stage__steps { position: absolute; inset: 0; pointer-events: none; }
+.stage__step {
+  position: absolute; right: max(var(--gutter, 24px), calc((100vw - 1280px) / 2)); top: 42%; transform: translateY(-50%);
+  width: min(30rem, 38vw); visibility: hidden;
+}
+.stage__n { font-family: var(--rs-num); font-weight: 600; font-size: 15px; color: #a8571f; letter-spacing: .08em; }
+.stage__step h2 { font-family: var(--rs-display); font-weight: 400; font-size: clamp(40px, 5vw, 80px); line-height: 1; margin: var(--s-3) 0 var(--s-5); color: var(--st-ink); }
+.stage__step p { font-size: clamp(17px, 1.3vw, 20px); line-height: 1.5; color: #4a4766; margin: 0; }
+
+/* tall screens: words on top, the machine below */
+@media (max-aspect-ratio: 6/5) {
+  .stage__hero { justify-content: flex-start; padding-top: calc(var(--nav) + clamp(16px, 4vh, 48px)); }
+  .stage__hero > * { max-width: 34rem; }
+  .stage__hero > .stage__title { font-size: clamp(38px, 9vw, 72px); max-width: 11em; margin-bottom: var(--s-4); }
+  .stage__lead { margin-bottom: var(--s-5); }
+  .stage__hint { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); margin: 0; white-space: nowrap; }
+  .stage__step { left: var(--gutter, 24px); right: var(--gutter, 24px); top: calc(var(--nav) + 4vh); transform: none; width: auto; }
+  .stage__step h2 { font-size: clamp(36px, 8vw, 64px); }
+  .stage__hud { left: 50%; right: auto; transform: translateX(-50%); bottom: 20px; }
+}
+@media (max-width: 639px) {
+  .stage__lead { font-size: 16px; }
+  .stage__hero .btn-row { display: none; }
+  .stage__hint { bottom: 132px; font-size: 14px; }
+  .stage__hud { bottom: 80px; font-size: 12px; gap: 6px; }
+  .stage__hud > * { padding: 5px 10px; }
+  .stage__hint { bottom: 120px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage__steps { display: none; }
+}
+
+/* ---------- the Google Play button ---------- */
+.play-btn { display: inline-flex; align-items: center; gap: 10px; }
+.play-btn__mark { flex: none; }
+.play-btn__text { display: flex; flex-direction: column; line-height: 1.05; text-align: left; }
+.play-btn__text small { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; opacity: .8; }
+
+/* ---------- machines: two captures opening from a clip ---------- */
+.machines__frame { --ratio: 62%; will-change: clip-path; }
+.machines__frame--tall { --ratio: 87%; }
+@media (max-width: 1023px) { .machines__frame, .machines__frame--tall { --ratio: 62%; } }
+
+/* ---------- noon to night: the shack's window, pinned ---------- */
+.day-night { position: relative; height: 100svh; min-height: 560px; overflow: hidden; background: #2fb1f0; }
+.day-night__art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.day-night__copy { position: relative; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: clamp(32px, 8vh, 96px); color: #fff9f1; }
+.day-night__copy h2 { font-family: var(--rs-display); font-weight: 400; font-size: clamp(48px, 8vw, 132px); line-height: .95; margin: 0 0 var(--s-4); text-shadow: 0 4px 30px rgba(14,20,51,.35); }
+.day-night__lead { font-size: clamp(17px, 1.4vw, 21px); max-width: 30rem; margin: 0 0 var(--s-6); text-shadow: 0 2px 16px rgba(14,20,51,.45); }
+.day-night__stages { position: relative; height: 4.6em; }
+.dn-stage {
+  position: absolute; left: 0; bottom: 0; margin: 0; display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  background: rgba(14,20,51,.55); backdrop-filter: blur(8px); padding: 12px 18px; border-radius: 18px; font-size: 16px;
+}
+.dn-stage b { font-family: var(--rs-display); font-weight: 400; font-size: 26px; }
+.dn-stage span:first-child { font-family: var(--rs-num); font-size: 14px; opacity: .8; }
+@media (max-width: 639px) { .day-night__copy { padding-bottom: 96px; } }
+@media (prefers-reduced-motion: reduce) { .dn-stage { position: static; display: flex; margin-top: 8px; } .day-night__stages { height: auto; } }
+
+/* ---------- the closing cup: one served slush standing on the wordmark ---------- */
+.close__stage { position: relative; margin-top: var(--s-6); padding-top: clamp(150px, 17vw, 250px); }
+.close__stage .close__word { position: relative; z-index: 0; margin: 0; }
+.cup-spin { position: absolute; z-index: 1; left: 50%; top: 0; width: clamp(160px, 17vw, 250px); height: calc(clamp(150px, 17vw, 250px) + 0.5em); font-size: clamp(48px, 13vw, 188px); transform: translateX(-50%); }
+.cup-spin canvas { width: 100%; height: 100%; display: block; }
+.cup-spin__btn { position: absolute; inset: 12% 22% 6%; background: none; border: 0; border-radius: 40px; cursor: pointer; }
+.cup-spin__btn:focus-visible { outline: 3px solid #ff6b8a; outline-offset: 4px; }
+.closing__cta .section-head--split { gap: var(--s-6) var(--s-8); align-items: end; }
+.closing__cta .section-head--split .t-lead { margin-top: var(--s-3); }
+.faq__item + .faq__item { margin-top: var(--s-2); }
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+/* sections whose content runs past one screen grow with it */
+#faq, .footer.closing { height: auto; min-height: 100svh; }
+.footer.closing .closing__links { margin-top: clamp(48px, 8vw, 96px); }

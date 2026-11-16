@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+.vercel/
+.env
+.env*.local
+next-env.d.ts
+*.tsbuildinfo
+# design tooling: the taste skill's deal history, browser profiles and check screenshots
+.taste-skill/
+shots/
+# raw full-size game captures (the optimised frames in public/img are what ships)
+img/
+
+.vercel

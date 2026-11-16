@@ -53,7 +53,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "bun test src",
+    "test": "bun test src/engine src/game",
     "typecheck": "tsc --noEmit",
     "postinstall": "setup-skia-web public",
     "build:android:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-local.ps1",
