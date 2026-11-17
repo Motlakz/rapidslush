@@ -59,7 +59,7 @@ export function Settings() {
             <Btn size="sm" onPress={() => Server.devCoins(500)}>+500 coins</Btn>
           </Row>
           <ScrollView style={{ maxHeight: 150, backgroundColor: C.ink, borderRadius: 14, padding: 12 }}>
-            <Text style={{ fontFamily: 'monospace', fontSize: 11, lineHeight: 16, color: '#CFCBE0' }}>
+            <Text style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 18, color: '#CFCBE0' }}>
               {recentEvents().map(e => `${e.t} ${e.name} ${JSON.stringify(e.props)}`).join('\n') || 'analytics events appear here'}
             </Text>
           </ScrollView>

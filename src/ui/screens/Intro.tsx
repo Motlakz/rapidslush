@@ -1,5 +1,6 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
 import { TOPPINGS, type Mode } from '@/engine';
+import { View } from 'react-native';
 import { cfgFor, goHome, keyHintsOn, startLevel } from '@/game/controller';
 import { glassFor } from '@/game/content';
 import { setFlag } from '@/services/save';
@@ -29,21 +30,21 @@ export function Intro({ n, m }: { n: number; m: Mode }) {
         <Row style={{ paddingRight: 60 }}>
           <Tag tone={spin ? 'razz' : 'berry'}>{`${spin ? 'Spin Bar' : 'Level'} ${n}`}</Tag>
           {L.isNew ? <Tag tone="mango">{`New: ${L.isNew}`}</Tag> : L.boss ? <Tag tone="razz">Big crowd</Tag> : L.breather ? <Tag tone="lime">Breather</Tag> : <Tag>{`Ch ${L.chapter} · ${L.chapterName}`}</Tag>}
-          <Row style={{ gap: 2 }}><Stars n={stars} s={22} /></Row>
+          <Row style={{ gap: 2 }}><Stars n={stars} s={26} /></Row>
         </Row>
         <H2>{L.name}</H2>
         {upgrade && (
-          <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: C.razz, backgroundColor: '#F2FBFF', paddingVertical: 12 }}>
-            <Tag tone="razz">Shack upgrade!</Tag>
+          <Card flat style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: C.razz, backgroundColor: '#F2FBFF', paddingVertical: 12, paddingHorizontal: 14 }}>
+            <View style={{ position: 'absolute', top: -12, left: 12, zIndex: 1 }}><Tag tone="razz">Shack upgrade!</Tag></View>
             <Col style={{ gap: 0, flex: 1 }}><B>{upgrade.name}</B><Small>{upgrade.blurb}</Small></Col>
           </Card>
         )}
         <P>{body}</P>
         <Row style={{ gap: 10, flexWrap: 'wrap' }}>
-          <Card flat style={{ paddingVertical: 12, gap: 2 }}><Small>Quota</Small><Num style={{ fontSize: 24 }}>{L.quota}</Num></Card>
-          <Card flat style={{ paddingVertical: 12, gap: 2 }}><Small>Time</Small><Num style={{ fontSize: 24 }}>{L.dur}s</Num></Card>
-          <Card flat style={{ paddingVertical: 12, gap: 2 }}><Small>Band</Small><Num style={{ fontSize: 24 }}>±{Math.round(L.tol)}</Num></Card>
-          {!!best && <Card flat style={{ paddingVertical: 12, gap: 2 }}><Small>Best</Small><Num style={{ fontSize: 24 }}>{best.toLocaleString('en-US')}</Num></Card>}
+          <Card flat style={{ paddingVertical: 16, gap: 2 }}><Small>Quota</Small><Num style={{ fontSize: 28 }}>{L.quota}</Num></Card>
+          <Card flat style={{ paddingVertical: 16, gap: 2 }}><Small>Time</Small><Num style={{ fontSize: 28 }}>{L.dur}s</Num></Card>
+          <Card flat style={{ paddingVertical: 16, gap: 2 }}><Small>Band</Small><Num style={{ fontSize: 28 }}>±{Math.round(L.tol)}</Num></Card>
+          {!!best && <Card flat style={{ paddingVertical: 16, gap: 2 }}><Small>Best</Small><Num style={{ fontSize: 28 }}>{best.toLocaleString('en-US')}</Num></Card>}
         </Row>
         <Row style={{ gap: 6, flexWrap: 'wrap' }}>{feats.map(f => <Tag key={f}>{f}</Tag>)}</Row>
         {!S.flags.costNote && (

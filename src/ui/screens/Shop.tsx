@@ -35,10 +35,10 @@ export function Shop({ confirm }: { confirm?: PackId }) {
         </Row>
         <Row style={{ gap: 10 }}>
           <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}>
-            <TokenIcon /><Col style={{ gap: 0 }}><Small>Free tokens</Small><Num style={{ fontSize: 16 }}>{w.free} <Small>{`/ ${ECON.freeCap} cap`}</Small></Num></Col>
+            <TokenIcon /><Col style={{ gap: 0 }}><Small>Free tokens</Small><Num style={{ fontSize: 20 }}>{w.free} <Small>{`/ ${ECON.freeCap} cap`}</Small></Num></Col>
           </Card>
           <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}>
-            <TokenIcon /><Col style={{ gap: 0 }}><Small>Bought tokens</Small><Num style={{ fontSize: 16 }}>{w.purchased} <Small>never expire</Small></Num></Col>
+            <TokenIcon /><Col style={{ gap: 0 }}><Small>Bought tokens</Small><Num style={{ fontSize: 20 }}>{w.purchased} <Small>never expire</Small></Num></Col>
           </Card>
           <Small style={{ flex: 1 }}>{`Rounds use free tokens first. The daily refill tops free tokens up to ${ECON.freeCap} and never touches what you bought.`}</Small>
         </Row>
@@ -46,7 +46,7 @@ export function Shop({ confirm }: { confirm?: PackId }) {
           {ECON.packs.map(p => (
             <View key={p.id} style={[ss.pack, p.id === 'pocket' && ss.packHl]}>
               <Tag tone={p.id === 'pocket' ? 'berry' : p.id === 'mega' ? 'lime' : 'default'}>{p.tag}</Tag>
-              <Row style={{ gap: 8 }}><TokenIcon s={30} /><Num style={{ fontSize: 38, lineHeight: 40 }}>{p.tokens}</Num></Row>
+              <Row style={{ gap: 8 }}><TokenIcon s={38} /><Num style={{ fontSize: 46, lineHeight: 50 }}>{p.tokens}</Num></Row>
               <B>{p.name}</B>
               <Small>{`${Math.floor(p.tokens / Math.max(1, S.tune.cost))} rounds${!S.flags.firstPurchase ? ` + ${ECON.firstPurchaseBonus} bonus` : ''}`}</Small>
               <Btn tone="mango" style={{ alignSelf: 'stretch', marginTop: 6 }} onPress={() => show({ name: 'shop', confirm: p.id })} label={`Buy ${p.name} for ${p.price}`}>{p.price}</Btn>
@@ -84,16 +84,16 @@ export function Wallet() {
       <Panel width={640} style={{ maxHeight: 660 }} onClose={goHome}>
         <H2>Wallet</H2>
         <Row style={{ gap: 10 }}>
-          <Card flat style={{ flex: 1, gap: 2 }}><Small>Free tokens</Small><Num style={{ fontSize: 28 }}>{w.free}</Num><Small>{`+${S.tune.daily} a day, up to ${ECON.freeCap}`}</Small></Card>
-          <Card flat style={{ flex: 1, gap: 2 }}><Small>Bought tokens</Small><Num style={{ fontSize: 28 }}>{w.purchased}</Num><Small>Never expire</Small></Card>
-          <Card flat style={{ flex: 1, gap: 2 }}><Small>Coins</Small><Num style={{ fontSize: 28 }}>{w.coins}</Num><Small>Earned by playing</Small></Card>
+          <Card flat style={{ flex: 1, gap: 2 }}><Small>Free tokens</Small><Num style={{ fontSize: 32 }}>{w.free}</Num><Small>{`+${S.tune.daily} a day, up to ${ECON.freeCap}`}</Small></Card>
+          <Card flat style={{ flex: 1, gap: 2 }}><Small>Bought tokens</Small><Num style={{ fontSize: 32 }}>{w.purchased}</Num><Small>Never expire</Small></Card>
+          <Card flat style={{ flex: 1, gap: 2 }}><Small>Coins</Small><Num style={{ fontSize: 32 }}>{w.coins}</Num><Small>Earned by playing</Small></Card>
         </Row>
         <ScrollView style={{ maxHeight: 300 }}>
           {rows.length ? rows.map(l => (
             <Row key={l.id + l.at} style={{ paddingVertical: 8, borderBottomWidth: 1.5, borderBottomColor: C.line }}>
               <B style={{ flex: 1 }}>{LEDGER_NAMES[l.type] || l.type}</B>
               <Small style={{ width: 120 }}>{l.currency === 'COIN' ? 'coins' : l.currency === 'FREE_TOKEN' ? 'free tokens' : 'bought tokens'}</Small>
-              <Num style={{ width: 60, textAlign: 'right', fontSize: 15, color: l.amount < 0 ? C.berryD : C.limeD }}>{`${l.amount > 0 ? '+' : ''}${l.amount}`}</Num>
+              <Num style={{ width: 60, textAlign: 'right', fontSize: 18, color: l.amount < 0 ? C.berryD : C.limeD }}>{`${l.amount > 0 ? '+' : ''}${l.amount}`}</Num>
             </Row>
           )) : <Small>No activity yet.</Small>}
         </ScrollView>
@@ -157,7 +157,7 @@ export function Collection() {
             <Btn size="sm" flat tone={collTab === 'skins' ? 'ink' : 'default'} onPress={() => setTab('skins')}><BtnText size="sm" tone={collTab === 'skins' ? 'ink' : 'default'}>Machines</BtnText></Btn>
           </Row>
           <Spacer />
-          <View style={{ marginRight: 56 }}><Pill><CoinIcon /><Num style={{ fontSize: 15 }}>{S.wallet.coins}</Num></Pill></View>
+          <View style={{ marginRight: 56 }}><Pill><CoinIcon /><Num style={{ fontSize: 19 }}>{S.wallet.coins}</Num></Pill></View>
         </Row>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
           {list.map(it => {

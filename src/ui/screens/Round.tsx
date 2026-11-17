@@ -76,9 +76,9 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
           <Row style={{ gap: 6 }}><Stars n={res.stars} /></Row>
         </Row>
         <Row style={{ alignItems: 'flex-end' }}>
-          <H2 style={{ fontSize: 46, lineHeight: 50 }}>{title}</H2>
+          <H2 style={{ fontSize: 54, lineHeight: 58 }}>{title}</H2>
           <Spacer />
-          <Col style={{ gap: 0, alignItems: 'flex-end' }}><Small>Score</Small><Num style={{ fontSize: 40, lineHeight: 42 }}>{res.score.toLocaleString('en-US')}</Num></Col>
+          <Col style={{ gap: 0, alignItems: 'flex-end' }}><Small>Score</Small><Num style={{ fontSize: 48, lineHeight: 50 }}>{res.score.toLocaleString('en-US')}</Num></Col>
         </Row>
         <P>{body}</P>
         <Row style={{ gap: 10 }}>
@@ -130,7 +130,7 @@ export function Offer({ short, n, m }: { short: number; n: number; m: Mode }) {
         {ds.claimable ? (
           <Btn tone="lime" size="big" onPress={() => { const r = Server.claimDaily(); if (r.ok) Sound.sfx('coin'); show({ name: 'intro', n, m }); }}>{`Claim free refill +${ds.amount}`}</Btn>
         ) : (
-          <Small>Free refill of {S.tune.daily} tokens in <Num style={{ fontSize: 13 }}>{resetIn()}</Num>.</Small>
+          <Small>Free refill of {S.tune.daily} tokens in <Num style={{ fontSize: 17 }}>{resetIn()}</Num>.</Small>
         )}
         <OfferCard short={short} />
         <Btn size="sm" onPress={() => show({ name: 'shop' })} style={{ alignSelf: 'flex-start' }}>See all packs</Btn>
