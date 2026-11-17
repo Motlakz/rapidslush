@@ -13,11 +13,12 @@ function PlayMark() {
 }
 
 /** The one main action everywhere on the site: the game's Google Play page. */
-export function PlayButton({ compact = false }: { compact?: boolean }) {
+export function PlayButton({ compact = false, xl = false, paper = false }: { compact?: boolean; xl?: boolean; paper?: boolean }) {
+  const cls = ['btn', paper ? 'btn--paper' : '', xl ? 'btn--xl' : '', 'play-btn'].filter(Boolean).join(' ');
   return (
-    <a className="btn btn--primary play-btn" href={site.playUrl} rel="noopener">
+    <a className={cls} href={site.playUrl} rel="noopener">
       <PlayMark />
-      {compact ? 'Get it on Google Play' : <span className="play-btn__text"><small>Get it on</small>Google Play</span>}
+      {compact ? 'Get the game' : <span className="play-btn__text"><small>Get it on</small>Google Play</span>}
     </a>
   );
 }

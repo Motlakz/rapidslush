@@ -1,54 +1,46 @@
 import { policies, site } from '@/lib/site';
-import { PlayButton } from './PlayButton';
-import { CupSpin } from './stage/CupSpin';
 
-/** footer.closing: row 1 the dealt close (close-word), row 2 the dealt footer-dark directory and the legal row. */
+const LINKS = [
+  ['machines', 'Machines'],
+  ['rush', 'The rush'],
+  ['shack', 'The shack'],
+  ['faq', 'Questions'],
+] as const;
+
+/** The plum footer: the shack's directory and the legal row. */
 export function SiteFooter({ home = '' }: { home?: '' | '/' }) {
   const to = (id: string) => `${home}#${id}`;
   return (
-    <footer className="footer closing footer--dark ground-inverse" id="contact" aria-labelledby="close-h">
+    <footer className="footer">
       <div className="wrap">
-        <div className="closing__cta close--word">
-          <div className="section-head--split">
-            <div>
-              <h2 id="close-h">Your shift starts now</h2>
-              <p className="t-lead">Rapid Slush is free on Google Play, with ten free tokens every day.</p>
-            </div>
-            <PlayButton />
+        <div className="footer__grid">
+          <div>
+            <a className="logo" href={home ? '/' : '#top'} style={{ color: 'var(--cream)' }}>
+              <svg viewBox="0 0 64 72" style={{ width: '1.8rem' }} aria-hidden="true">
+                <path d="M8 14h48l-7 46a8 8 0 0 1-8 7H23a8 8 0 0 1-8-7z" fill="none" stroke="#fff6e5" strokeWidth="4" strokeLinejoin="round" />
+                <path d="M14 34h36l-3 24a8 8 0 0 1-8 6H25a8 8 0 0 1-8-6z" fill="#ff4d8d" />
+                <path d="M40 14l8-10" stroke="#fff6e5" strokeWidth="4" strokeLinecap="round" />
+              </svg>
+              {site.name}
+            </a>
+            <p style={{ marginTop: '.8rem', lineHeight: 1.6, opacity: .85 }}>A slushy arcade game set in a beach shack, made for phones.</p>
           </div>
-          <div className="close__stage">
-            <p className="close__word" aria-hidden="true">{site.name}</p>
-            <CupSpin />
+          <div>
+            <h3>Game</h3>
+            <ul style={{ display: 'grid', gap: '.5rem' }}>
+              {LINKS.map(([id, label]) => <li key={id}><a href={to(id)}>{label}</a></li>)}
+            </ul>
+          </div>
+          <div>
+            <h3>Policies</h3>
+            <ul style={{ display: 'grid', gap: '.5rem' }}>
+              {policies.map(p => <li key={p.href}><a href={p.href}>{p.label}</a></li>)}
+            </ul>
           </div>
         </div>
-        <div className="closing__links">
-          <div className="grid">
-            <div className="span-4 stack-4">
-              <a className="nav__logo" href={home ? '/' : '#top'}><span className="mark" data-mark="arc" aria-hidden="true" />{site.name}</a>
-              <p className="footer__lede">A slushy arcade game set in a beach shack, made for phones.</p>
-            </div>
-            <div className="span-2 footer__col">
-              <h3>Game</h3>
-              <ul>
-                <li><a href={to('play')}>How a round works</a></li>
-                <li><a href={to('machines')}>Machines</a></li>
-                <li><a href={to('shack')}>The shack</a></li>
-                <li><a href={to('faq')}>Questions</a></li>
-              </ul>
-            </div>
-            <div className="span-2 footer__col">
-              <h3>Policies</h3>
-              <ul>
-                {policies.map(p => (
-                  <li key={p.href}><a href={p.href}>{p.label}</a></li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          <div className="footer__legal">
-            <span>&copy; 2026 {site.name} &nbsp; <a href="/privacy/">Privacy</a> &nbsp; <a href="/terms/">Terms</a></span>
-            <div className="socials" />
-          </div>
+        <div className="footer__legal">
+          <span>&copy; 2026 {site.name} — {site.operator}</span>
+          <span><a href="/privacy/">Privacy</a> &nbsp; <a href="/terms/">Terms</a></span>
         </div>
       </div>
     </footer>
