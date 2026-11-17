@@ -39,12 +39,26 @@ export const App = {
 export const cfgFor = (n: number, m: Mode) => (m === 'spin' ? spinConfig(n, save().tune) : levelConfig(n, save().tune));
 const cupTopY = (c: Cup) => (c.p ? c.p.y - CUP_H * c.p.s : BELT_Y - CUP_H);
 
+// ---------- showcase (dev, web) ----------
+/**
+ * Marketing captures of the real game for the website: `?showcase=belt|spin&level=N[&shack=N][&ui=shop]` plays attract
+ * mode at that level with no menus (or one named panel). Development web builds only; a release build never reads it.
+ */
+export const SHOWCASE: { mode: Mode; level: number; shack: number; ui: string | null } | null = (() => {
+  if (!__DEV__ || Platform.OS !== 'web' || typeof location === 'undefined') return null;
+  const q = new URLSearchParams(location.search), m = q.get('showcase');
+  if (m !== 'belt' && m !== 'spin') return null;
+  const level = Math.max(1, Number(q.get('level')) || 1);
+  return { mode: m, level, shack: Math.max(1, Number(q.get('shack')) || level), ui: q.get('ui') };
+})();
+
 // ---------- attract mode ----------
 export function newAttract() {
-  const S = save(), spin = S.machine === 'spin' && spinUnlocked();
-  const lv = spin ? Math.min(trackOf('spin').highest, SPIN.MAX_LEVEL) : Math.max(1, Math.min(S.progress.highest, MAX_LEVEL));
+  const S = save(), X = SHOWCASE, spin = X ? X.mode === 'spin' : S.machine === 'spin' && spinUnlocked();
+  const lv = X ? Math.min(X.level, spin ? SPIN.MAX_LEVEL : MAX_LEVEL)
+    : spin ? Math.min(trackOf('spin').highest, SPIN.MAX_LEVEL) : Math.max(1, Math.min(S.progress.highest, MAX_LEVEL));
   const r = createRound(lv, { countdown: 0.01, seed: Math.floor(Math.random() * 1e9), mode: spin ? 'spin' : 'belt' });
-  if (spin) setRoundGlass(r, glassFor(S.progress.highest));
+  if (spin) setRoundGlass(r, glassFor(X ? X.shack : S.progress.highest));
   r.time = 9999;
   App.attract = r;
 }
@@ -318,7 +332,7 @@ export function tick(rawDt: number): { r: Round; dt: number; t: number; ctx: Ren
       live, paused: frozen, reduced: S.settings.reduced,
       skin: SKINS.find(s => s.id === S.inv.skin) ?? SKINS[0],
       cup: CUPS.find(c => c.id === S.inv.cup) ?? CUPS[0],
-      highest: S.progress.highest, coach: live ? App.coach : null, banner: live ? App.banner : null, keyHints: keyHintsOn(),
+      highest: SHOWCASE ? SHOWCASE.shack : S.progress.highest, coach: live ? App.coach : null, banner: live ? App.banner : null, keyHints: keyHintsOn(),
     },
   };
 }

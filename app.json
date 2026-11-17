@@ -3,7 +3,7 @@
     "name": "Rapid Slush",
     "slug": "rapidslush",
     "version": "1.0.0",
-    "orientation": "default",
+    "orientation": "landscape",
     "icon": "./assets/images/icon.png",
     "scheme": "rapidslush",
     "userInterfaceStyle": "automatic",
@@ -55,6 +55,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#17152A"
+    "backgroundColor": "#17152A",
+    "owner": "tlale",
+    "extra": {
+      "eas": {
+        "projectId": "05d8e5a5-5d3e-42ce-8619-0fa6eb1b2933"
+      }
+    }
   }
 }
