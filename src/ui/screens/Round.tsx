@@ -69,7 +69,7 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
 
   return (
     <Screen>
-      <Panel width={720}>
+      <Panel width={960}>
         <Row>
           <Tag tone={res.win ? 'lime' : 'berry'}>{`${spin ? 'Spin Bar' : 'Level'} ${res.level} · ${L.name}`}</Tag>
           <Spacer />
