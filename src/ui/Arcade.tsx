@@ -113,6 +113,6 @@ const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.stageBg },
   notice: { position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(23,21,42,0.82)', alignItems: 'center', justifyContent: 'center', padding: 24 },
   noticeCard: { backgroundColor: C.cream, borderRadius: 24, padding: 24, gap: 12, maxWidth: 340, alignItems: 'flex-start' },
-  noticeTitle: { fontFamily: F.display, fontSize: 26, lineHeight: 32, color: C.ink },
-  noticeBody: { fontFamily: F.headSemi, fontSize: 15, lineHeight: 21, color: C.ink2 },
+  noticeTitle: { fontFamily: F.display, fontSize: 30, lineHeight: 36, color: C.ink },
+  noticeBody: { fontFamily: F.headSemi, fontSize: 18, lineHeight: 24, color: C.ink2 },
 });

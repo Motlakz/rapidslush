@@ -58,7 +58,7 @@ export function Levels({ m: want }: { m: Mode }) {
                         style={[sl.lvl, locked && sl.locked, cur && sl.cur]}>
                         {newAt[n] && <View style={sl.nw}><Text style={sl.nwText}>NEW</Text></View>}
                         {locked ? <LockIcon /> : <Text style={sl.n}>{n}</Text>}
-                        {!locked && <View style={{ flexDirection: 'row', gap: 1 }}>{[1, 2, 3].map(s => <StarIcon key={s} on={s <= st} s={12} />)}</View>}
+                        {!locked && <View style={{ flexDirection: 'row', gap: 1 }}>{[1, 2, 3].map(s => <StarIcon key={s} on={s <= st} s={14} />)}</View>}
                       </Pressable>
                     );
                   })}
@@ -80,7 +80,7 @@ const sl = StyleSheet.create({
   },
   locked: { backgroundColor: '#ECE5D8', shadowOpacity: 0, elevation: 0 },
   cur: { backgroundColor: C.mango, shadowColor: C.mangoD },
-  n: { fontFamily: F.num, fontSize: 22, color: C.ink },
-  nw: { position: 'absolute', top: -7, right: -6, backgroundColor: C.berry, paddingVertical: 3, paddingHorizontal: 7, borderRadius: 999, zIndex: 1 },
-  nwText: { fontFamily: F.head, fontSize: 10, color: '#fff', letterSpacing: 0.4 },
+  n: { fontFamily: F.num, fontSize: 26, color: C.ink },
+  nw: { position: 'absolute', top: -8, right: -6, backgroundColor: C.berry, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, zIndex: 1 },
+  nwText: { fontFamily: F.head, fontSize: 12, color: '#fff', letterSpacing: 0.4 },
 });

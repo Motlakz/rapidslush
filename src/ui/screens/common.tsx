@@ -59,7 +59,7 @@ export function OfferCard({ short, onBuy }: { short: number; onBuy?: () => void 
   );
 }
 
-export function TokenCount({ size = 14 }: { size?: number }) {
+export function TokenCount({ size = 18 }: { size?: number }) {
   return (
     <Row style={{ gap: 6 }}>
       <TokenIcon s={size} />

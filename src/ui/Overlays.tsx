@@ -39,6 +39,6 @@ export function Toast() {
 
 const st = StyleSheet.create({
   wrap: { position: 'absolute', top: 22, left: 0, right: 0, alignItems: 'center', zIndex: 50 },
-  toast: { backgroundColor: C.ink, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 999, ...shadow },
-  text: { fontFamily: F.head, fontSize: 16, color: '#fff' },
+  toast: { backgroundColor: C.ink, paddingVertical: 15, paddingHorizontal: 24, borderRadius: 999, ...shadow },
+  text: { fontFamily: F.head, fontSize: 18, color: '#fff' },
 });
