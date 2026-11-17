@@ -133,7 +133,7 @@ if (-not $manifest -or -not (Select-String -Path $manifest.FullName -Pattern "an
   throw "The bundle's manifest doesn't carry versionCode $VersionCode ($($manifest.FullName)). Don't upload it."
 }
 
-$out = Join-Path $projectRoot "buildapidslush-$versionName-$VersionCode.aab"
+$out = Join-Path (Join-Path $projectRoot "build") "rapidslush-$versionName-$VersionCode.aab"
 New-Item -ItemType Directory -Force (Split-Path $out) | Out-Null
 Copy-Item $aab $out -Force
 Write-Output "Play bundle: $out"
