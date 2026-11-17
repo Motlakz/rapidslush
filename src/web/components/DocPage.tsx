@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 
 import { site } from '@/lib/site';
 import { SiteFooter } from './SiteFooter';
-import { ActionBar } from './ActionBar';
 import { SiteNav } from './SiteNav';
 
 /** A policy page: the site's nav and footer around one readable column (the home page's sections link back with "/#id"). */
@@ -11,7 +10,7 @@ export function DocPage({ title, lead, children }: { title: string; lead: ReactN
     <>
       <SiteNav home="/" />
       <main id="top">
-        <section className="section section--doc" aria-labelledby="doc-h">
+        <section className="section--doc" aria-labelledby="doc-h">
           <div className="wrap">
             <article className="doc measure">
               <h1 id="doc-h">{title}</h1>
@@ -23,7 +22,6 @@ export function DocPage({ title, lead, children }: { title: string; lead: ReactN
         </section>
       </main>
       <SiteFooter home="/" />
-      <ActionBar />
     </>
   );
 }
