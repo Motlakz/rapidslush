@@ -56,16 +56,16 @@
       "reactCompiler": true
     },
     "updates": {
-      "url": "https://u.expo.dev/05d8e5a5-5d3e-42ce-8619-0fa6eb1b2933"
+      "url": "https://u.expo.dev/e8e7c2b0-664d-42cc-9063-717d00e764f1"
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "backgroundColor": "#17152A",
-    "owner": "tlale",
+    "owner": "sello-software-solutions",
     "extra": {
       "eas": {
-        "projectId": "05d8e5a5-5d3e-42ce-8619-0fa6eb1b2933"
+        "projectId": "e8e7c2b0-664d-42cc-9063-717d00e764f1"
       }
     }
   }
