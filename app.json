@@ -55,6 +55,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
+    "updates": {
+      "url": "https://u.expo.dev/05d8e5a5-5d3e-42ce-8619-0fa6eb1b2933"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "backgroundColor": "#17152A",
     "owner": "tlale",
     "extra": {

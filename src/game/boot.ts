@@ -1,6 +1,7 @@
 // Startup (plan §1: playing within 30 seconds). Load the save, recover interrupted sessions, then either drop a new
 // player straight into Level 1 with their welcome refill, or show Home.
 import { track } from '@/services/analytics';
+import { checkOta, checkStoreUpdate } from '@/services/appUpdate';
 import { Sound } from '@/services/feedback';
 import { isFirstLaunch, loadSave } from '@/services/save';
 import { Server } from '@/services/server';
@@ -28,4 +29,7 @@ export async function boot() {
     show({ name: 'home' });
     if (refunded) toast(`Your last round was interrupted. ${refunded} tokens refunded`);
   }
+  // Updates run in the background; the Play sheet waits a beat so it never pops over the first paint.
+  void checkOta();
+  setTimeout(() => { void checkStoreUpdate(); }, 4000);
 }
