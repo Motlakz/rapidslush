@@ -61,6 +61,8 @@
     "build:android:production": "bun run check && bun x eas-cli@latest build --profile production --platform android --auto-submit-with-profile production",
     "build:android:alpha": "bun x eas-cli@latest build --profile production --platform android --auto-submit-with-profile alpha",
     "build:ios:production": "bun x eas-cli@latest build --profile production --platform ios --auto-submit-with-profile production",
+    "update:production": "bun x eas-cli@latest update --channel production --message",
+    "update:preview": "bun x eas-cli@latest update --channel preview --message",
     "build:all:production": "bun x eas-cli@latest build --profile production --platform all --auto-submit-with-profile production",
     "submit:ios": "bun x eas-cli@latest submit --platform ios --profile production --latest",
     "build:android:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-local.ps1",
