@@ -8,6 +8,7 @@ import { Levels } from './screens/Levels';
 import { Offer, Pause, Results } from './screens/Round';
 import { Settings } from './screens/Settings';
 import { Collection, Shop, Wallet } from './screens/Shop';
+import { useUi } from './scale';
 import { C, F, shadow } from './theme';
 
 export function Overlays() {
@@ -29,16 +30,17 @@ export function Overlays() {
 
 export function Toast() {
   const t = useUI(s => s.toast);
+  const { safe } = useUi();
   if (!t) return null;
   return (
-    <View pointerEvents="none" style={st.wrap}>
+    <View pointerEvents="none" style={[st.wrap, { paddingTop: 22 + safe.top }]}>
       <View style={st.toast}><Text style={st.text}>{t.s}</Text></View>
     </View>
   );
 }
 
 const st = StyleSheet.create({
-  wrap: { position: 'absolute', top: 22, left: 0, right: 0, alignItems: 'center', zIndex: 50 },
+  wrap: { position: 'absolute', top: 0, left: 0, right: 0, alignItems: 'center', zIndex: 50 },
   toast: { backgroundColor: C.ink, paddingVertical: 15, paddingHorizontal: 24, borderRadius: 999, ...shadow },
   text: { fontFamily: F.head, fontSize: 18, color: '#fff' },
 });

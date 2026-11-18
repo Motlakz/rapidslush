@@ -12,6 +12,7 @@ import { show, useUI } from '@/game/ui-store';
 import { flush } from '@/services/save';
 import { Overlays, Toast } from './Overlays';
 import { Btn } from './kit';
+import { MIN_UI_SCALE } from './scale';
 import { C, F } from './theme';
 
 
@@ -19,7 +20,7 @@ export function Arcade() {
   const { width, height } = useWindowDimensions();
   const ins = useSafeAreaInsets();
   // Re-runs on every size change: rotation, iPad multitasking, a foldable opening or closing mid-round.
-  const fit = layoutStage(width, height, ins), { scale, portrait } = fit, sw = fit.width, sh = fit.height;
+  const fit = layoutStage(width, height, ins), { portrait } = fit;
   useEffect(() => { setStageLayout(fit); });
 
   const tooSmall = !fit.playable;
@@ -32,11 +33,14 @@ export function Arcade() {
   useKeyboard();
   useLifecycle();
 
+  // Menus cover the whole window (so dimmed backdrops reach every edge, notches included) and scale by ui, never
+  // by the stage fit — small text must stay at its designed point size on phones. See ui/scale.ts.
+  const ui = Math.max(fit.scale, MIN_UI_SCALE);
   return (
     <View style={st.root}>
       <GameCanvasHost geo={{ ...fit, winW: width, winH: height }} />
-      <View pointerEvents="box-none" style={{ position: 'absolute', width: sw, height: sh, left: fit.left, top: fit.top, overflow: 'hidden' }}>
-        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, top: 0, width: fit.SW - fit.safe.left - fit.safe.right, height: fit.SH - fit.safe.top - fit.safe.bottom, transformOrigin: 'top left', transform: [{ translateX: fit.safe.left * scale }, { translateY: fit.safe.top * scale }, { scale }] }}>
+      <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, top: 0, width: width / ui, height: height / ui, overflow: 'hidden', transformOrigin: 'top left', transform: [{ scale: ui }] }}>
           <Overlays />
           <Toast />
         </View>

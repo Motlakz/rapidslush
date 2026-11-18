@@ -8,7 +8,7 @@ import { track } from '@/services/analytics';
 import { Sound } from '@/services/feedback';
 import { MAX_LEVEL } from '@/engine';
 import { save, type Rewards } from '@/services/save';
-import { Server, maxFor } from '@/services/server';
+import { Server, maxFor, trackOf } from '@/services/server';
 import { Stars, TokenIcon } from '../icons';
 import { B, Btn, BtnText, Card, Col, CostChip, H2, Num, P, Row, Small, Spacer, Stat, Tag } from '../kit';
 import { OfferCard, Panel, Screen, resetIn, useSave } from './common';
@@ -28,7 +28,7 @@ export function Pause() {
   useSave();
   return (
     <Screen>
-      <Panel width={440}>
+      <Panel width={600}>
         <H2>Paused</H2>
         <Btn tone="lime" size="big" onPress={resumeRound}>Resume</Btn>
         <Btn onPress={restartRound} label="Restart">
@@ -56,13 +56,18 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
   const glassNext = !spin && res.win && res.level < MAX_LEVEL && glassFor(res.level + 1).tier > glassFor(res.level).tier ? glassFor(res.level + 1) : null;
 
   // Plan §5.5: offer a top-up only when they can't afford a retry; after 3 fails suggest an easier level, never a purchase.
+  // The suggestion is anchored to their top level (the wall), not to whichever level they just replayed: it stays one
+  // or two below the wall instead of drifting further down with every warm-up round. Label and target share one
+  // variable, so the button always starts exactly the level it names.
+  const wall = Math.min(trackOf(m).highest, maxL);
+  const warm = Math.max(1, Math.max(wall - 2, Math.min(res.level, wall) - 1));
   let offer = null;
   if (tokens < cost) offer = <OfferCard short={cost - tokens} />;
-  else if (!res.win && S.stats.fails >= 3 && res.level > 1) {
+  else if (!res.win && S.stats.fails >= 3 && warm < res.level) {
     offer = (
       <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Col style={{ gap: 2, flex: 1 }}><B>Tough one?</B><Small>{`Warm up on Level ${res.level - 1}, then come back.`}</Small></Col>
-        <Btn size="sm" onPress={() => show({ name: 'intro', n: res.level - 1, m })}>{`Play Level ${res.level - 1}`}</Btn>
+        <Col style={{ gap: 2, flex: 1 }}><B>Tough one?</B><Small>{`Warm up on Level ${warm}, then come back.`}</Small></Col>
+        <Btn size="sm" onPress={() => show({ name: 'intro', n: warm, m })}>{`Play Level ${warm}`}</Btn>
       </Card>
     );
   }
@@ -81,7 +86,7 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
           <Col style={{ gap: 0, alignItems: 'flex-end' }}><Small>Score</Small><Num style={{ fontSize: 48, lineHeight: 50 }}>{res.score.toLocaleString('en-US')}</Num></Col>
         </Row>
         <P>{body}</P>
-        <Row style={{ gap: 10 }}>
+        <Row style={{ gap: 10, flexWrap: 'wrap' }}>
           <Stat grow k="Served" v={`${res.served}/${res.quota}`} />
           <Stat grow k="Perfect" v={res.perfect} />
           <Stat grow k="Accuracy" v={`${Math.round(res.accuracy * 100)}%`} />

@@ -1,5 +1,5 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
-import { View } from 'react-native';
+import { ScrollView } from 'react-native';
 
 import { SPIN } from '@/engine';
 import { newAttract } from '@/game/controller';
@@ -11,10 +11,12 @@ import { Server, maxFor, spinUnlocked, trackOf } from '@/services/server';
 import { CoinIcon, GearIcon, LockIcon, TokenIcon } from '../icons';
 import { Bar, Btn, BtnText, Card, Col, CostChip, H1, H3, Num, P, Pill, Row, Small, Spacer, Tag } from '../kit';
 import { C } from '../theme';
+import { useUi } from '../scale';
 import { Screen, resetIn, useSave } from './common';
 
 export function Home() {
   const S = useSave();
+  const { safe, availH } = useUi();
   const m = S.machine === 'spin' && spinUnlocked() ? 'spin' : 'belt', T = trackOf(m), n = Math.min(T.highest, maxFor(m));
   const ds = Server.dailyStatus(), pl = playerLevel(S.progress.xp), mach = MACHINES.find(x => x.id === m)!;
   const ch = S.challenge, def = ch && CHALLENGES.find(c => c.id === ch.id), cost = Server.cost();
@@ -26,7 +28,8 @@ export function Home() {
 
   return (
     <Screen clear>
-      <Row style={{ position: 'absolute', left: 24, right: 24, top: 20, gap: 10 }}>
+      {/* zIndex keeps the top bar above its neighbours, so the pills and the gear stay tappable everywhere */}
+      <Row style={{ position: 'absolute', left: 24 + safe.left, right: 24 + safe.right, top: 20 + safe.top, gap: 10, zIndex: 30 }}>
         <Pill onPress={() => show({ name: 'wallet' })} label="Wallet">
           <TokenIcon /><Num style={{ fontSize: 19 }}>{Server.tokens()}</Num><Small>tokens</Small>
         </Pill>
@@ -41,10 +44,12 @@ export function Home() {
         <Btn icon size="sm" onPress={() => show({ name: 'settings' })} label="Settings"><GearIcon /></Btn>
       </Row>
 
-      {/* box-none: this row fills the stage (its top padding sits under the top bar), so let empty space pass touches through */}
-      <View pointerEvents="box-none" style={{ flexDirection: 'row', gap: 22, paddingTop: 104, paddingHorizontal: 40, paddingBottom: 34, flex: 1 }}>
-        <Card style={{ width: 500, gap: 16, padding: 28, alignSelf: 'flex-start' }}>
-          <Row style={{ gap: 8 }}><Tag tone="mango">Beach Shack</Tag><Tag>{`${mach.name} · Level ${n} of ${maxFor(m)}`}</Tag></Row>
+      {/* Side-by-side columns that scroll vertically when the screen is shorter than the cards (phones at the 16pt
+          floor). flexGrow keeps the row at full height when everything fits, so the right column still sits bottom. */}
+      <ScrollView pointerEvents="box-none" style={{ flex: 1 }}
+        contentContainerStyle={{ flexDirection: 'row', flexGrow: 1, gap: 22, paddingTop: 104 + safe.top, paddingBottom: 34 + safe.bottom, paddingLeft: 40 + safe.left, paddingRight: 40 + safe.right }}>
+        <Card style={{ flex: 1, maxWidth: 500, gap: 16, padding: 28, alignSelf: 'flex-start' }}>
+          <Row style={{ gap: 8, flexWrap: 'wrap' }}><Tag tone="mango">Beach Shack</Tag><Tag>{`${mach.name} · Level ${n} of ${maxFor(m)}`}</Tag></Row>
           <H1 style={{ fontSize: 58, lineHeight: 62 }}>{'Rapid\nSlush'}</H1>
           <Row style={{ gap: 8, flexWrap: 'wrap' }}>
             {MACHINES.map(x => {
@@ -70,7 +75,8 @@ export function Home() {
           <Small>{`Each round costs ${S.tune.cost} tokens. You get ${S.tune.daily} free tokens a day, holding up to ${ECON.freeCap}. Tokens you buy never expire.`}</Small>
         </Card>
 
-        <Col style={{ width: 360, gap: 14, marginTop: 'auto', marginLeft: 'auto' }}>
+        {/* bottom-anchored on tall screens; on short ones bottom-anchoring would push the cards off-screen, so top-align */}
+        <Col style={{ flex: 1, maxWidth: 360, gap: 14, marginTop: availH < 640 ? 0 : 'auto', marginLeft: 'auto' }}>
           <Card style={{ gap: 10, padding: 24 }}>
             <Row><H3>Daily refill</H3><Spacer /><TokenIcon s={34} /></Row>
             {ds.claimable ? (
@@ -98,7 +104,7 @@ export function Home() {
             ))}
           </Card>
         </Col>
-      </View>
+      </ScrollView>
     </Screen>
   );
 }

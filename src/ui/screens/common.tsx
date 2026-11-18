@@ -1,6 +1,6 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
 import { useSyncExternalStore, type ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ECON } from '@/game/content';
 import { show } from '@/game/ui-store';
@@ -9,6 +9,7 @@ import { Server } from '@/services/server';
 import { CloseIcon, TokenIcon } from '../icons';
 import { B, Btn, Card, Col, Row, Small } from '../kit';
 import { C } from '../theme';
+import { useUi } from '../scale';
 
 /** Re-render when the save changes (wallet, progress, settings). */
 export const useSave = () => {
@@ -16,17 +17,26 @@ export const useSave = () => {
   return save();
 };
 
-/** A dimmed full-stage layer with a centred card. */
+/**
+ * A dimmed layer with a centred card. It fills the whole overlay container, which spans the window (notches
+ * included), so the backdrop always reaches every edge of the screen.
+ */
 export function Screen({ children, clear }: { children: ReactNode; clear?: boolean }) {
   return <View style={[StyleSheet.absoluteFill, clear ? st.clear : st.scrim]}>{children}</View>;
 }
 
-export function Panel({ children, width, style, onClose, closeLabel = 'Close' }: {
-  children: ReactNode; width: number; style?: StyleProp<ViewStyle>; onClose?: () => void; closeLabel?: string;
+/**
+ * A menu card at its designed width, clamped to the safe area, never taller than the screen. Content scrolls when
+ * it runs tall (phones at the 16pt text floor). Panels that manage their own scrolling (level grid, wallet ledger)
+ * pass scroll={false}.
+ */
+export function Panel({ children, width, style, onClose, closeLabel = 'Close', scroll = true }: {
+  children: ReactNode; width: number; style?: StyleProp<ViewStyle>; onClose?: () => void; closeLabel?: string; scroll?: boolean;
 }) {
+  const { availW, availH } = useUi();
   return (
-    <Card style={[{ width, gap: 14 }, style]}>
-      {children}
+    <Card style={[{ width: Math.min(width, availW - 16), maxHeight: availH - 16, gap: 14 }, style]}>
+      {scroll ? <ScrollView style={st.scroll} contentContainerStyle={st.content}>{children}</ScrollView> : children}
       {onClose && (
         <View style={st.x}>
           <Btn icon size="sm" onPress={onClose} label={closeLabel}><CloseIcon /></Btn>
@@ -72,4 +82,6 @@ const st = StyleSheet.create({
   scrim: { backgroundColor: C.scrim, alignItems: 'center', justifyContent: 'center' },
   clear: { backgroundColor: 'rgba(23,21,42,0.30)' },
   x: { position: 'absolute', right: 18, top: 18 },
+  scroll: { flexGrow: 0, flexShrink: 1 },
+  content: { gap: 14, paddingRight: 2 },
 });

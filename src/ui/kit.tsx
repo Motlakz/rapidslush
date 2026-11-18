@@ -121,7 +121,7 @@ export const B = ({ children, style }: { children: ReactNode; style?: StyleProp<
 /** A labelled stat box (Quota / Time / Score…). */
 export function Stat({ k, v, grow }: { k: string; v: ReactNode; grow?: boolean }) {
   return (
-    <Card flat style={[{ paddingVertical: 16, paddingHorizontal: 18, gap: 3 }, grow && { flex: 1 }]}>
+    <Card flat style={[{ paddingVertical: 16, paddingHorizontal: 18, gap: 3 }, grow && { flex: 1, minWidth: 170 }]}>
       <Small>{k}</Small>
       <Num style={{ fontSize: 30 }}>{v}</Num>
     </Card>
@@ -162,7 +162,7 @@ export const s = StyleSheet.create({
   card: { backgroundColor: C.cream, borderRadius: R.lg, padding: 32, ...shadow },
   cardFlat: { backgroundColor: '#fff', borderRadius: R.lg, borderWidth: 1.5, borderColor: C.line, padding: 20 },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7, paddingHorizontal: 15, borderRadius: 999, alignSelf: 'flex-start' },
-  tagText: { fontFamily: F.head, fontSize: 14, letterSpacing: 0.7, textTransform: 'uppercase' },
+  tagText: { fontFamily: F.head, fontSize: 16, letterSpacing: 0.7, textTransform: 'uppercase' },
   pill: {
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 999, paddingVertical: 11, paddingLeft: 13, paddingRight: 18,
     shadowColor: '#141228', shadowOpacity: 0.18, shadowRadius: 7, shadowOffset: { width: 0, height: 4 }, elevation: 4,

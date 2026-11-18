@@ -81,14 +81,14 @@ export function Wallet() {
   const rows = S.ledger.slice(-30).reverse();
   return (
     <Screen>
-      <Panel width={640} style={{ maxHeight: 660 }} onClose={goHome}>
+      <Panel width={640} scroll={false} onClose={goHome}>
         <H2>Wallet</H2>
         <Row style={{ gap: 10 }}>
           <Card flat style={{ flex: 1, gap: 2 }}><Small>Free tokens</Small><Num style={{ fontSize: 32 }}>{w.free}</Num><Small>{`+${S.tune.daily} a day, up to ${ECON.freeCap}`}</Small></Card>
           <Card flat style={{ flex: 1, gap: 2 }}><Small>Bought tokens</Small><Num style={{ fontSize: 32 }}>{w.purchased}</Num><Small>Never expire</Small></Card>
           <Card flat style={{ flex: 1, gap: 2 }}><Small>Coins</Small><Num style={{ fontSize: 32 }}>{w.coins}</Num><Small>Earned by playing</Small></Card>
         </Row>
-        <ScrollView style={{ maxHeight: 300 }}>
+        <ScrollView style={{ flexGrow: 0, flexShrink: 1 }}>
           {rows.length ? rows.map(l => (
             <Row key={l.id + l.at} style={{ paddingVertical: 8, borderBottomWidth: 1.5, borderBottomColor: C.line }}>
               <B style={{ flex: 1 }}>{LEDGER_NAMES[l.type] || l.type}</B>

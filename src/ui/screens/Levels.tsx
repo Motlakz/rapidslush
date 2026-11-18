@@ -25,7 +25,7 @@ export function Levels({ m: want }: { m: Mode }) {
 
   return (
     <Screen>
-      <Panel width={920} style={{ maxHeight: 680 }} onClose={goHome}>
+      <Panel width={920} scroll={false} onClose={goHome}>
         <Row>
           <H2>Beach Shack</H2>
           <Tag>{`${total} / ${maxL * 3} stars`}</Tag>
@@ -36,7 +36,7 @@ export function Levels({ m: want }: { m: Mode }) {
             </Btn>
           </Row>
         </Row>
-        <ScrollView ref={scroll} style={{ maxHeight: 500 }} contentContainerStyle={{ gap: 18, paddingVertical: 8, paddingHorizontal: 6 }}
+        <ScrollView ref={scroll} style={{ flexGrow: 0, flexShrink: 1 }} contentContainerStyle={{ gap: 18, paddingVertical: 8, paddingHorizontal: 6 }}
           onContentSizeChange={() => scroll.current?.scrollTo({ y: Math.max(0, curCh * 128 - 8), animated: false })}>
           {chNames.map((name, c) => {
             const from = c * 10 + 1;
@@ -81,6 +81,6 @@ const sl = StyleSheet.create({
   locked: { backgroundColor: '#ECE5D8', shadowOpacity: 0, elevation: 0 },
   cur: { backgroundColor: C.mango, shadowColor: C.mangoD },
   n: { fontFamily: F.num, fontSize: 26, color: C.ink },
-  nw: { position: 'absolute', top: -8, right: -6, backgroundColor: C.berry, paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999, zIndex: 1 },
-  nwText: { fontFamily: F.head, fontSize: 12, color: '#fff', letterSpacing: 0.4 },
+  nw: { position: 'absolute', top: -12, right: -10, backgroundColor: C.berry, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 999, zIndex: 1 },
+  nwText: { fontFamily: F.head, fontSize: 16, color: '#fff', letterSpacing: 0.4 },
 });

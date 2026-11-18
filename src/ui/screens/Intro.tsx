@@ -1,6 +1,5 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
 import { TOPPINGS, type Mode } from '@/engine';
-import { View } from 'react-native';
 import { cfgFor, goHome, keyHintsOn, startLevel } from '@/game/controller';
 import { glassFor } from '@/game/content';
 import { setFlag } from '@/services/save';
@@ -34,9 +33,9 @@ export function Intro({ n, m }: { n: number; m: Mode }) {
         </Row>
         <H2>{L.name}</H2>
         {upgrade && (
-          <Card flat style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: C.razz, backgroundColor: '#F2FBFF', paddingVertical: 12, paddingHorizontal: 14 }}>
-            <View style={{ position: 'absolute', top: -12, left: 12, zIndex: 1 }}><Tag tone="razz">Shack upgrade!</Tag></View>
+          <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 12, borderColor: C.razz, backgroundColor: '#F2FBFF', paddingVertical: 12, paddingHorizontal: 14 }}>
             <Col style={{ gap: 0, flex: 1 }}><B>{upgrade.name}</B><Small>{upgrade.blurb}</Small></Col>
+            <Tag tone="razz">Shack upgrade!</Tag>
           </Card>
         )}
         <P>{body}</P>
