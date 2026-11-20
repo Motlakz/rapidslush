@@ -14,7 +14,7 @@ export async function boot() {
   const first = isFirstLaunch();
   const { refunded } = Server.bootstrap();
   newAttract();
-  Sound.preload();
+  void Sound.load(); // every effect decoded up front, so the first tap and countdown are on time
   if (SHOWCASE) { // dev capture mode: the game alone, or one named panel over it
     show(SHOWCASE.ui ? ({ name: SHOWCASE.ui } as Overlay) : { name: 'none' });
     return;
