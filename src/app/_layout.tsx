@@ -9,9 +9,11 @@ import { StyleSheet } from 'react-native';
 import Animated, { FadeOut } from 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PostHogProvider } from 'posthog-react-native';
 
 import { boot } from '@/game/boot';
 import { Loading } from '@/ui/Loading';
+import { posthog } from '@/services/posthog';
 import { C } from '@/ui/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -44,7 +46,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: C.stageBg }}>
       <SafeAreaProvider>
         <StatusBar hidden />
-        {loaded && <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.stageBg }, animation: 'fade' }} />}
+        {loaded && (posthog ? (
+          <PostHogProvider client={posthog}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.stageBg }, animation: 'fade' }} />
+          </PostHogProvider>
+        ) : (
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.stageBg }, animation: 'fade' }} />
+        ))}
         {!loaded && (
           <Animated.View exiting={FadeOut.duration(350)} style={StyleSheet.absoluteFill}>
             <Loading progress={progress} onDone={() => setPoured(true)} />

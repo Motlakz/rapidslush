@@ -4,7 +4,7 @@ import { ScrollView, Text, View } from 'react-native';
 
 import { goHome, newAttract } from '@/game/controller';
 import { show, toast } from '@/game/ui-store';
-import { recentEvents } from '@/services/analytics';
+import { recentEvents, track } from '@/services/analytics';
 import { updateSettings, updateTune, wipeSave, type Settings as S } from '@/services/save';
 import { Server, unlockAll } from '@/services/server';
 import { Btn, H2, H3, Row, Small, Stepper, Tag, Toggle } from '../kit';
@@ -15,7 +15,7 @@ type BoolKey = { [K in keyof S]: S[K] extends boolean ? K : never }[keyof S];
 
 export function SettingsToggles({ compact }: { compact?: boolean }) {
   const st = useSave().settings;
-  const flip = (k: BoolKey) => updateSettings({ [k]: !st[k] });
+  const flip = (k: BoolKey) => { updateSettings({ [k]: !st[k] }); track('setting_changed', { setting: k, enabled: !st[k] }); };
   return (
     <View>
       <Toggle label="Sound" on={st.sound} onChange={() => flip('sound')} />
@@ -40,7 +40,7 @@ export function Settings() {
           <Btn size="sm" onPress={() => show({ name: 'wallet' })}>Wallet history</Btn>
           <Btn size="sm" tone={armed ? 'berry' : 'default'} onPress={async () => {
             if (!armed) return setArmed(true);
-            await wipeSave(); Server.bootstrap(); newAttract(); goHome(); toast('Progress reset');
+            track('progress_reset'); await wipeSave(); Server.bootstrap(); newAttract(); goHome(); toast('Progress reset');
           }}>{armed ? 'Tap again to wipe' : 'Reset progress'}</Btn>
         </Row>
         <Row style={{ marginTop: 14, paddingRight: 60 }}><H3>Tuning</H3><Tag tone="mango">prototype only</Tag></Row>

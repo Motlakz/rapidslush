@@ -1,0 +1,13 @@
+// Only records emitted through this facade are sent to PostHog Logs.
+import { posthog } from './posthog';
+
+type LogAttributes = Record<string, string | number | boolean>;
+
+export const posthogLogger = {
+  info(message: string, attributes: LogAttributes = {}) {
+    posthog?.logger.info(message, attributes);
+  },
+  warn(message: string, attributes: LogAttributes = {}) {
+    posthog?.logger.warn(message, attributes);
+  },
+};

@@ -5,6 +5,8 @@ import { randomUUID } from 'expo-crypto';
 
 import { LIVES } from '@/game/content';
 import type { Mode } from '@/engine';
+import { posthog } from '@/services/posthog';
+import { posthogLogger } from '@/services/posthogLogger';
 
 export const SAVE_KEY = 'rapidslush.save.v1';
 export const uid = () => randomUUID();
@@ -107,8 +109,11 @@ export function setFlag<K extends keyof Save['flags']>(k: K, v: Save['flags'][K]
 export function setMachine(m: Mode) { SAVE.machine = m; persist(); }
 
 export async function wipeSave() {
+  posthogLogger.warn('local_progress_reset');
   await AsyncStorage.removeItem(SAVE_KEY);
   SAVE = freshSave();
   firstLaunch = true;
+  // a reset starts over as a new anonymous player (analytics never identifies anyone)
+  posthog?.reset();
   persist();
 }

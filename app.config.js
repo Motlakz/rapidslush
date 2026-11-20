@@ -7,6 +7,13 @@ const localVersionCode = Number(process.env.RS_ANDROID_VERSION_CODE) || undefine
 
 module.exports = ({ config }) => ({
   ...config,
+  extra: {
+    ...config.extra,
+    posthogProjectToken: process.env.EXPO_PUBLIC_POSTHOG_PROJECT_TOKEN,
+    posthogHost: process.env.EXPO_PUBLIC_POSTHOG_HOST,
+    // dev builds send nothing unless POSTHOG_DEV=1 (keeps test sessions out of real numbers)
+    posthogDev: process.env.POSTHOG_DEV === '1',
+  },
   ...(localVersionCode ? { android: { ...config.android, versionCode: localVersionCode } } : {}),
   plugins: [
     ...(config.plugins ?? []),

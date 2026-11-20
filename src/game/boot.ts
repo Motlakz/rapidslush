@@ -3,6 +3,7 @@
 import { track } from '@/services/analytics';
 import { checkOta, checkStoreUpdate } from '@/services/appUpdate';
 import { Sound } from '@/services/feedback';
+import { posthogLogger } from '@/services/posthogLogger';
 import { isFirstLaunch, loadSave } from '@/services/save';
 import { Server } from '@/services/server';
 import { SHOWCASE, newAttract } from './controller';
@@ -21,6 +22,10 @@ export async function boot(onProgress?: (f: number) => void) {
     return;
   }
   track('app_opened', { first });
+  posthogLogger.info('game_boot_completed', {
+    first_launch: first,
+    interrupted_session_refunded: refunded,
+  });
   if (first) {
     track('tutorial_started');
     show({ name: 'intro', n: 1, m: 'belt' });

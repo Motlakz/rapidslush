@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CHAPTERS, SCHEDULE, SPIN_CHAPTERS, SPIN_SCHEDULE, type Mode } from '@/engine';
 import { goHome } from '@/game/controller';
 import { show } from '@/game/ui-store';
+import { track } from '@/services/analytics';
 import { Sound } from '@/services/feedback';
 import { maxFor, spinUnlocked, trackOf } from '@/services/server';
 import { LockIcon, StarIcon } from '../icons';
@@ -28,8 +29,8 @@ export function Levels({ m: want }: { m: Mode }) {
 
   const machines = (
     <Row style={{ gap: 8, flexWrap: 'wrap' }}>
-      <Btn size="sm" flat tone={m === 'belt' ? 'ink' : 'default'} onPress={() => show({ name: 'levels', m: 'belt' })}><BtnText size="sm" tone={m === 'belt' ? 'ink' : 'default'}>Slush Line</BtnText></Btn>
-      <Btn size="sm" flat tone={m === 'spin' ? 'ink' : 'default'} disabled={!spinUnlocked()} onPress={() => show({ name: 'levels', m: 'spin' })}>
+      <Btn size="sm" flat tone={m === 'belt' ? 'ink' : 'default'} onPress={() => { track('machine_selected', { machine: 'belt', source: 'level_select' }); show({ name: 'levels', m: 'belt' }); }}><BtnText size="sm" tone={m === 'belt' ? 'ink' : 'default'}>Slush Line</BtnText></Btn>
+      <Btn size="sm" flat tone={m === 'spin' ? 'ink' : 'default'} disabled={!spinUnlocked()} onPress={() => { track('machine_selected', { machine: 'spin', source: 'level_select' }); show({ name: 'levels', m: 'spin' }); }}>
         {!spinUnlocked() && <LockIcon s={14} />}<BtnText size="sm" tone={m === 'spin' ? 'ink' : 'default'}>Spin Bar</BtnText>
       </Btn>
     </Row>
@@ -69,7 +70,7 @@ export function Levels({ m: want }: { m: Mode }) {
                     const n = from + k, locked = n > P.highest, cur = n === P.highest, st = P.stars[n] || 0;
                     return (
                       <Pressable key={n} disabled={locked} accessibilityRole="button" accessibilityLabel={locked ? `Level ${n}, locked` : `Level ${n}, ${st} stars`}
-                        onPress={() => { Sound.sfx('tap'); show({ name: 'intro', n, m }); }}
+                        onPress={() => { Sound.sfx('tap'); track('level_selected', { machine: m, level: n }); show({ name: 'intro', n, m }); }}
                         style={[sl.lvl, locked && sl.locked, cur && sl.cur]}>
                         {newAt[n] && <View style={sl.nw}><Text style={sl.nwText}>NEW</Text></View>}
                         {locked ? <LockIcon /> : <Text style={sl.n}>{n}</Text>}

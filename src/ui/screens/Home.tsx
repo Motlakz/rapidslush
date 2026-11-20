@@ -5,6 +5,7 @@ import { SPIN } from '@/engine';
 import { newAttract } from '@/game/controller';
 import { CHALLENGES, LIVES, LOCATIONS, MACHINES, playerLevel } from '@/game/content';
 import { show } from '@/game/ui-store';
+import { track } from '@/services/analytics';
 import { setMachine } from '@/services/save';
 import { Server, maxFor, spinUnlocked, trackOf } from '@/services/server';
 import { CoinIcon, GearIcon, HeartIcon, LockIcon } from '../icons';
@@ -49,7 +50,7 @@ export function Home() {
               const locked = x.id === 'spin' && !spinUnlocked();
               return (
                 <Btn key={x.id} size="sm" flat tone={x.id === m ? 'ink' : 'default'} disabled={locked}
-                  onPress={() => { setMachine(x.id); newAttract(); }}>
+                  onPress={() => { track('machine_selected', { machine: x.id, source: 'home' }); setMachine(x.id); newAttract(); }}>
                   {locked ? <><LockIcon s={18} /><BtnText size="sm">{`${x.name} · Lv ${SPIN.UNLOCK}`}</BtnText></> : <BtnText size="sm" tone={x.id === m ? 'ink' : 'default'}>{x.name}</BtnText>}
                 </Btn>
               );
