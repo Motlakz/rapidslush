@@ -17,6 +17,7 @@ module.exports = ({ config }) => ({
   ...(localVersionCode ? { android: { ...config.android, versionCode: localVersionCode } } : {}),
   plugins: [
     ...(config.plugins ?? []),
+    './plugins/with-gradle-memory',
     ...(process.platform === 'win32'
       ? [
           ['expo-build-properties', { android: { cmakeVersion: '3.31.6' } }],
