@@ -5,10 +5,10 @@
 //  3. When the save and every sound have loaded (game/boot.ts), the slush dome and cherry pop on with a sparkle burst.
 // The sky never sits still: the sun's rays turn, the cloud drifts, flavour badges float up, sparkles twinkle.
 // The pour never runs ahead of the real loads, and audio is ready before the game starts.
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
-  Easing, Extrapolation, FadeIn, interpolate, useAnimatedProps, useAnimatedReaction, useAnimatedStyle, useDerivedValue,
+  Easing, Extrapolation, interpolate, useAnimatedProps, useAnimatedReaction, useAnimatedStyle, useDerivedValue,
   useSharedValue, withDelay, withRepeat, withSequence, withTiming, type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
@@ -35,17 +35,34 @@ const STRIPE = 56;
 /** the first-layer colours, bottom to top, matching MARK.layers (razz bottom, grape middle, berry top) */
 const POUR = [{ until: 0.343, c: '#45C6F2' }, { until: 0.664, c: '#A78BFA' }, { until: 2, c: '#FF6B8A' }];
 
-/** time the dispenser takes to pour a full cup when loading is instant, so the pour always reads */
-const POUR_MS = 1300;
+/**
+ * Timeline (ms after the first frame is on screen): the tile hands over and the cup grows 0–650, the dispenser
+ * drops 500–920, the pour runs 900–2200 (never ahead of the real loads), then the topping lands in 420.
+ */
 const INTRO_MS = 650;
+const DROP_AT = 500;
+const POUR_AT = 900;
+const POUR_MS = 1300;
+const TIP_MS = 1100;
 
-/** `onDone` fires once the topping has landed: the game waits for it, so the pour is always seen through. */
-export function Loading({ progress, onDone }: { progress: number; onDone: () => void }) {
+/** Words under the counter: title, bar, tip. Short screens get a smaller title so all three always fit. */
+const wordsLayout = (h: number) => {
+  const size = h < 400 ? 26 : 32, line = size + 6, gap = 8;
+  return { size, line, gap, height: line + gap + 18 + gap + 20 };
+};
+
+/**
+ * `onReady` fires once the first frame (with the splash's icon tile) is on screen: hide the native splash then,
+ * so the handover never flashes. `onDone` fires once the topping has landed: the game waits for it.
+ */
+export function Loading({ progress, onReady, onDone }: { progress: number; onReady: () => void; onDone: () => void }) {
   const { width: w, height: h } = useWindowDimensions();
 
-  // ---- layout: counter at 70% height, cup scaled so rim + dispenser fit under the awning ----
+  // ---- layout: the counter sits as low as the words under it allow; the cup is scaled so its rim and the
+  //      dispenser fit under the awning ----
   const awningH = Math.round(Math.min(56, h * 0.11));
-  const counterTop = Math.round(h * 0.7);
+  const words = wordsLayout(h);
+  const counterTop = Math.round(Math.min(h * 0.7, h - words.height - 30));
   const K = Math.max(1, Math.min(2.4, (counterTop - awningH - 100) / ((M.fillBottom + 12 - RIM_Y) * U)));
   const left0 = w / 2 - SPLASH_DP / 2, top0 = h / 2 - SPLASH_DP / 2;
   const dy = counterTop - (top0 + BASE.y);
@@ -61,14 +78,34 @@ export function Loading({ progress, onDone }: { progress: number; onDone: () => 
   const pop = useSharedValue(0);     // dome + cherry land
   const fill = useDerivedValue(() => Math.min(p.value, pourT.value));
 
-  useEffect(() => { p.value = withTiming(progress, { duration: 380 }); }, [progress, p]);
+  // Nothing moves until the first frame, icon tile included, is actually on screen.
+  const [laidOut, setLaidOut] = useState(false);
+  const [tileLoaded, setTileLoaded] = useState(false);
+  const ready = laidOut && tileLoaded;
+  useEffect(() => { const t = setTimeout(() => setTileLoaded(true), 600); return () => clearTimeout(t); }, []); // never wait on the image forever
   useEffect(() => {
-    intro.value = withDelay(200, withTiming(1, { duration: INTRO_MS, easing: Easing.out(Easing.cubic) }));
-    drop.value = withDelay(INTRO_MS - 150, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }));
-    pourT.value = withDelay(INTRO_MS + 250, withTiming(1, { duration: POUR_MS, easing: Easing.inOut(Easing.quad) }));
-  }, [intro, drop, pourT]);
+    if (!ready) return;
+    onReady();
+    intro.value = withTiming(1, { duration: INTRO_MS, easing: Easing.out(Easing.cubic) });
+    drop.value = withDelay(DROP_AT, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }));
+    pourT.value = withDelay(POUR_AT, withTiming(1, { duration: POUR_MS, easing: Easing.inOut(Easing.quad) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when the first frame is ready
+  }, [ready]);
+  useEffect(() => { p.value = withTiming(progress, { duration: 380 }); }, [progress, p]);
+
+  // tips change on a steady beat, never faster than they can be read; "Order up!" waits for the topping
+  const [tipN, setTipN] = useState(0);
+  const [served, setServed] = useState(false);
+  useEffect(() => {
+    if (!ready || served) return;
+    const id = setInterval(() => setTipN(n => n + 1), TIP_MS);
+    return () => clearInterval(id);
+  }, [ready, served]);
   useAnimatedReaction(() => fill.value >= 0.999, (done, was) => {
-    if (done && !was) pop.value = withDelay(120, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }, fin => { if (fin) scheduleOnRN(onDone); }));
+    if (done && !was) {
+      scheduleOnRN(setServed, true);
+      pop.value = withDelay(120, withTiming(1, { duration: 420, easing: Easing.out(Easing.cubic) }, fin => { if (fin) scheduleOnRN(onDone); }));
+    }
   });
 
   // ---- animated styles ----
@@ -106,21 +143,30 @@ export function Loading({ progress, onDone }: { progress: number; onDone: () => 
     };
   });
   const bar = useAnimatedStyle(() => ({ width: `${Math.max(6, Math.round(fill.value * 100))}%` }));
+  // the shack and the words come in with the cup, not on their own clock
+  const scene = useAnimatedStyle(() => ({ opacity: interpolate(intro.value, [0, 0.6], [0, 1], Extrapolation.CLAMP) }));
+  const wordsIn = useAnimatedStyle(() => ({
+    opacity: interpolate(intro.value, [0.3, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [{ translateY: (1 - intro.value) * 8 }],
+  }));
 
-  const tip = progress >= 1 ? 'Order up!' : TIPS[Math.min(TIPS.length - 1, Math.floor(progress * TIPS.length))];
+  const tip = served ? 'Order up!' : TIPS[tipN % TIPS.length];
   const sparkles = [
     { x: X(96), y: Y(150), s: 22, d: 0 }, { x: X(430), y: Y(236), s: 16, d: 350 }, { x: X(112), y: Y(372), s: 14, d: 700 },
     { x: X(420), y: Y(400), s: 20, d: 200 }, { x: X(70), y: Y(266), s: 12, d: 520 },
   ];
 
   return (
-    <View style={st.root} accessibilityRole="progressbar" accessibilityLabel="Loading Rapid Slush" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}>
-      <Animated.View entering={FadeIn.duration(450)} style={StyleSheet.absoluteFill}>
+    <View style={st.root} onLayout={() => setLaidOut(true)}
+      accessibilityRole="progressbar" accessibilityLabel="Loading Rapid Slush" accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}>
+      <Animated.View style={[StyleSheet.absoluteFill, scene]}>
         <Sky w={w} awningH={awningH} />
         <Counter w={w} h={h} top={counterTop} />
         <Props w={w} top={counterTop} room={counterTop - awningH} />
       </Animated.View>
-      <Floaters w={w} top={awningH + 24} bottom={counterTop - 16} />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, scene]}>
+        <Floaters w={w} top={awningH + 24} bottom={counterTop - 16} />
+      </Animated.View>
 
       <Animated.View style={[st.mark, { left: left0, top: top0, transformOrigin: `${BASE.x}px ${BASE.y}px` }, hero]}>
         <Svg width={SPLASH_DP} height={SPLASH_DP} viewBox="0 0 512 512">
@@ -168,13 +214,14 @@ export function Loading({ progress, onDone }: { progress: number; onDone: () => 
       <Animated.View style={[st.stream, { left: streamX - streamW / 2, top: headBottom - 2, width: streamW, borderRadius: streamW / 2 }, stream]} />
 
       <Animated.View pointerEvents="none" style={[st.mark, { left: left0, top: top0 }, tile]}>
-        <Image source={require('../../assets/images/splash-icon.png')} style={{ width: SPLASH_DP, height: SPLASH_DP }} />
+        <Image source={require('../../assets/images/splash-icon.png')} style={{ width: SPLASH_DP, height: SPLASH_DP }}
+          onLoad={() => setTileLoaded(true)} onError={() => setTileLoaded(true)} />
       </Animated.View>
       {sparkles.map((s, k) => <Sparkle key={k} {...s} intro={intro} pop={pop} />)}
-      <Awning w={w} h={awningH} />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, scene]}><Awning w={w} h={awningH} /></Animated.View>
 
-      <Animated.View entering={FadeIn.duration(300)} style={[st.words, { top: counterTop + 16 }]}>
-        <Text style={st.title}>Rapid Slush</Text>
+      <Animated.View style={[st.words, { top: counterTop + 16, gap: words.gap }, wordsIn]}>
+        <Text style={[st.title, { fontSize: words.size, lineHeight: words.line }]}>Rapid Slush</Text>
         <View style={st.track}>
           <Animated.View style={[st.fill, bar]}><CandyStripes /></Animated.View>
         </View>
@@ -298,9 +345,12 @@ function Sparkle({ x, y, s, d, intro, pop }: { x: number; y: number; s: number; 
 
 /** Flavour badges drifting up through the sky behind the cup, each on its own slow loop. */
 function Floaters({ w, top, bottom }: { w: number; top: number; bottom: number }) {
-  const items = useMemo(() => [0.06, 0.17, 0.28, 0.38, 0.62, 0.72, 0.83, 0.94].map((fx, k) => ({
-    x: fx * w, size: 40 + (k % 3) * 8, f: FLAVOURS[k % 5], dur: 4600 + (k % 4) * 900, phase: (k * 0.29) % 1,
-  })), [w]);
+  // sized to the sky they drift through, and fewer on narrow screens, so small phones never look crowded
+  const scale = Math.max(0.62, Math.min(1, (bottom - top) / 380));
+  const xs = w < 700 ? [0.07, 0.22, 0.78, 0.93] : [0.06, 0.17, 0.28, 0.38, 0.62, 0.72, 0.83, 0.94];
+  const items = useMemo(() => xs.map((fx, k) => ({
+    x: fx * w, size: Math.round((40 + (k % 3) * 8) * scale), f: FLAVOURS[k % 5], dur: 4600 + (k % 4) * 900, phase: (k * 0.29) % 1,
+  })), [w, scale, xs.length]); // eslint-disable-line react-hooks/exhaustive-deps -- xs is derived from w
   if (bottom - top < 60) return null; // a very short screen: no room for them to drift
   return <>{items.map((it, k) => <Floater key={k} {...it} top={top} bottom={bottom} />)}</>;
 }
@@ -380,8 +430,8 @@ const st = StyleSheet.create({
   boardInner: { flex: 1, backgroundColor: '#2E3B36', borderRadius: 6, alignItems: 'center', justifyContent: 'center', gap: 6 },
   boardTitle: { fontFamily: F.display, fontSize: 18, lineHeight: 22, color: '#F4F1E6' },
   boardRow: { flexDirection: 'row', gap: 3 },
-  words: { position: 'absolute', left: 0, right: 0, alignItems: 'center', gap: 6 },
-  title: { fontFamily: F.display, fontSize: 32, lineHeight: 38, color: C.ink },
+  words: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  title: { fontFamily: F.display, color: C.ink },
   track: { width: 240, height: 18, borderRadius: 9, borderWidth: 3, borderColor: C.ink, backgroundColor: C.cream, overflow: 'hidden' },
   fill: { height: '100%', backgroundColor: C.berry, overflow: 'hidden' },
   stripes: { position: 'absolute', left: 0, top: 0, width: 300, height: 18 },
