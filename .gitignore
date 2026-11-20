@@ -56,3 +56,9 @@ example
 credentials.json
 credentials/
 /build
+
+# Landing site build output and captures. src/web/.gitignore already covers these for git,
+# but EAS only reads the root .gitignore when packing a build upload (.next alone added 170 MB).
+/src/web/.next/
+/src/web/shots/
+/src/web/img/
