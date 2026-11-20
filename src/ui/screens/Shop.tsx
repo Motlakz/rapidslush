@@ -1,79 +1,21 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
-// Token shop, wallet and collection (plan §5.3, §7.4).
+// Coin wallet and the Collection (cosmetics bought with coins earned in play; plan §7.4).
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 import { goHome } from '@/game/controller';
-import { CUPS, ECON, SKINS, type CupDesign, type PackId, type Skin } from '@/game/content';
+import { CUPS, SKINS, type CupDesign, type Skin } from '@/game/content';
 import { show, toast, useUI } from '@/game/ui-store';
-import { track } from '@/services/analytics';
 import { Sound } from '@/services/feedback';
 import { Server } from '@/services/server';
-import { CoinIcon, TokenIcon } from '../icons';
-import { B, Btn, BtnText, Card, Col, H2, H3, Num, P, Pill, Row, Small, Spacer, Tag } from '../kit';
+import { CoinIcon } from '../icons';
+import { B, Btn, BtnText, Card, H2, Num, Pill, Row, Small, Spacer, Tag } from '../kit';
 import { C } from '../theme';
 import { Panel, Screen, useSave } from './common';
 
-export function Shop({ confirm }: { confirm?: PackId }) {
-  const S = useSave(), w = S.wallet, cpk = confirm && ECON.packs.find(p => p.id === confirm);
-  const buy = (id: PackId) => {
-    track('purchase_started', { pack: id });
-    const r = Server.purchase(id);
-    if (r.ok) {
-      Sound.sfx('coin');
-      toast(`+${r.tokens + r.bonus} tokens added${r.bonus ? ' (incl. first-purchase bonus)' : ''}`);
-      track('purchase_completed', { pack: id, tokens: r.tokens, bonus: r.bonus });
-    } else track('purchase_failed', { pack: id });
-    show({ name: 'shop' });
-  };
-  return (
-    <Screen>
-      <Panel width={900} style={{ gap: 16 }} onClose={goHome}>
-        <Row>
-          <H2>Token shop</H2>
-          {!S.flags.firstPurchase && <Tag tone="berry">{`First purchase: +${ECON.firstPurchaseBonus} bonus tokens`}</Tag>}
-        </Row>
-        <Row style={{ gap: 10 }}>
-          <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}>
-            <TokenIcon /><Col style={{ gap: 0 }}><Small>Free tokens</Small><Num style={{ fontSize: 20 }}>{w.free} <Small>{`/ ${ECON.freeCap} cap`}</Small></Num></Col>
-          </Card>
-          <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12 }}>
-            <TokenIcon /><Col style={{ gap: 0 }}><Small>Bought tokens</Small><Num style={{ fontSize: 20 }}>{w.purchased} <Small>never expire</Small></Num></Col>
-          </Card>
-          <Small style={{ flex: 1 }}>{`Rounds use free tokens first. The daily refill tops free tokens up to ${ECON.freeCap} and never touches what you bought.`}</Small>
-        </Row>
-        <Row style={{ gap: 14, alignItems: 'stretch' }}>
-          {ECON.packs.map(p => (
-            <View key={p.id} style={[ss.pack, p.id === 'pocket' && ss.packHl]}>
-              <Tag tone={p.id === 'pocket' ? 'berry' : p.id === 'mega' ? 'lime' : 'default'}>{p.tag}</Tag>
-              <Row style={{ gap: 8 }}><TokenIcon s={38} /><Num style={{ fontSize: 46, lineHeight: 50 }}>{p.tokens}</Num></Row>
-              <B>{p.name}</B>
-              <Small>{`${Math.floor(p.tokens / Math.max(1, S.tune.cost))} rounds${!S.flags.firstPurchase ? ` + ${ECON.firstPurchaseBonus} bonus` : ''}`}</Small>
-              <Btn tone="mango" style={{ alignSelf: 'stretch', marginTop: 6 }} onPress={() => show({ name: 'shop', confirm: p.id })} label={`Buy ${p.name} for ${p.price}`}>{p.price}</Btn>
-            </View>
-          ))}
-        </Row>
-        <Small>Prototype checkout: nothing is charged. In the app this goes through Google Play Billing via RevenueCat, and tokens are only added after the server verifies the purchase.</Small>
-      </Panel>
-      {cpk && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: C.scrim, alignItems: 'center', justifyContent: 'center' }]}>
-          <Card style={{ width: 420, gap: 12 }}>
-            <H3>Confirm purchase</H3>
-            <P>{`${cpk.name}: ${cpk.tokens} tokens${!S.flags.firstPurchase ? ` + ${ECON.firstPurchaseBonus} first-purchase bonus` : ''} for ${cpk.price}.`}</P>
-            <Row>
-              <Btn tone="berry" onPress={() => buy(cpk.id)}>{`Buy for ${cpk.price}`}</Btn>
-              <Btn onPress={() => show({ name: 'shop' })}>Cancel</Btn>
-            </Row>
-          </Card>
-        </View>
-      )}
-    </Screen>
-  );
-}
-
 const LEDGER_NAMES: Record<string, string> = {
-  DAILY_CLAIM: 'Daily refill', ROUND_ENTRY: 'Round entry', ROUND_REFUND: 'Refund', PURCHASE: 'Purchase', FIRST_PURCHASE_BONUS: 'First purchase bonus',
-  MILESTONE: 'Milestone', CHALLENGE: 'Daily challenge', ROUND_REWARD: 'Round reward', ITEM_UNLOCK: 'Unlock', DEV_GRANT: 'Dev grant',
+  MILESTONE: 'Milestone', CHALLENGE: 'Daily challenge', ROUND_REWARD: 'Round reward', ITEM_UNLOCK: 'Unlock', LIFE_REFILL: 'Lives refilled',
+  DEV_GRANT: 'Dev grant',
 };
 
 export function Wallet() {
@@ -84,21 +26,19 @@ export function Wallet() {
       <Panel width={640} scroll={false} onClose={goHome}>
         <H2>Wallet</H2>
         <Row style={{ gap: 10 }}>
-          <Card flat style={{ flex: 1, gap: 2 }}><Small>Free tokens</Small><Num style={{ fontSize: 32 }}>{w.free}</Num><Small>{`+${S.tune.daily} a day, up to ${ECON.freeCap}`}</Small></Card>
-          <Card flat style={{ flex: 1, gap: 2 }}><Small>Bought tokens</Small><Num style={{ fontSize: 32 }}>{w.purchased}</Num><Small>Never expire</Small></Card>
           <Card flat style={{ flex: 1, gap: 2 }}><Small>Coins</Small><Num style={{ fontSize: 32 }}>{w.coins}</Num><Small>Earned by playing</Small></Card>
         </Row>
         <ScrollView style={{ flexGrow: 0, flexShrink: 1 }}>
           {rows.length ? rows.map(l => (
             <Row key={l.id + l.at} style={{ paddingVertical: 8, borderBottomWidth: 1.5, borderBottomColor: C.line }}>
               <B style={{ flex: 1 }}>{LEDGER_NAMES[l.type] || l.type}</B>
-              <Small style={{ width: 120 }}>{l.currency === 'COIN' ? 'coins' : l.currency === 'FREE_TOKEN' ? 'free tokens' : 'bought tokens'}</Small>
+              <Small style={{ width: 120 }}>coins</Small>
               <Num style={{ width: 60, textAlign: 'right', fontSize: 18, color: l.amount < 0 ? C.berryD : C.limeD }}>{`${l.amount > 0 ? '+' : ''}${l.amount}`}</Num>
             </Row>
           )) : <Small>No activity yet.</Small>}
         </ScrollView>
         <Row>
-          <Btn tone="mango" onPress={() => show({ name: 'shop' })}>Get tokens</Btn>
+          <Btn tone="mango" onPress={() => show({ name: 'collection' })}>Collection</Btn>
           <Spacer />
           <Small>{`Player ${S.playerId.slice(0, 8)}`}</Small>
         </Row>

@@ -30,7 +30,7 @@ export function SettingsToggles({ compact }: { compact?: boolean }) {
 export function Settings() {
   const Sv = useSave(), T = Sv.tune;
   const [armed, setArmed] = useState(false);
-  const tune = (k: 'accel' | 'tol' | 'dwell' | 'cost' | 'daily', v: number) => updateTune({ [k]: v });
+  const tune = (k: 'accel' | 'tol' | 'dwell', v: number) => updateTune({ [k]: v });
   return (
     <Screen>
       <Panel width={920} onClose={goHome}>
@@ -47,12 +47,11 @@ export function Settings() {
         <Stepper label="Flow ramp ×" value={T.accel} min={0.5} max={2} step={0.1} onChange={v => tune('accel', v)} />
         <Stepper label="Band width ×" value={T.tol} min={0.5} max={2} step={0.1} onChange={v => tune('tol', v)} />
         <Stepper label="Belt pause ×" value={T.dwell} min={0.5} max={2} step={0.1} onChange={v => tune('dwell', v)} />
-        <Stepper label="Round cost" value={T.cost} min={0} max={5} step={1} onChange={v => tune('cost', v)} />
-        <Stepper label="Daily free tokens" value={T.daily} min={0} max={20} step={1} onChange={v => tune('daily', v)} />
-        <Toggle label="Unlimited tokens" on={T.infinite} onChange={() => updateTune({ infinite: !T.infinite })} />
+        <Toggle label="Unlimited lives" on={T.infinite} onChange={() => updateTune({ infinite: !T.infinite })} />
         <Row style={{ gap: 8, marginVertical: 8 }}>
           <Btn size="sm" onPress={() => { unlockAll(); toast('All levels and machines unlocked'); }}>Unlock all levels</Btn>
           <Btn size="sm" onPress={() => Server.devCoins(500)}>+500 coins</Btn>
+          <Btn size="sm" onPress={() => { Server.devRefill(); toast('Lives refilled'); }}>Refill lives</Btn>
         </Row>
         <ScrollView style={{ maxHeight: 150, backgroundColor: C.ink, borderRadius: 14, padding: 12 }}>
           <Text style={{ fontFamily: 'monospace', fontSize: 14, lineHeight: 19, color: '#CFCBE0' }}>

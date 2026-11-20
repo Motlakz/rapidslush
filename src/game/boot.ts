@@ -1,6 +1,5 @@
 // Startup (plan §1: playing within 30 seconds). Load the save and every sound (behind the loading screen, which
-// shows `onProgress`), recover interrupted sessions, then either drop a new player straight into Level 1 with their
-// welcome refill, or show Home.
+// shows `onProgress`), recover interrupted sessions, then either drop a new player straight into Level 1 or show Home.
 import { track } from '@/services/analytics';
 import { checkOta, checkStoreUpdate } from '@/services/appUpdate';
 import { Sound } from '@/services/feedback';
@@ -23,13 +22,11 @@ export async function boot(onProgress?: (f: number) => void) {
   }
   track('app_opened', { first });
   if (first) {
-    const c = Server.claimDaily();
     track('tutorial_started');
     show({ name: 'intro', n: 1, m: 'belt' });
-    if (c.amount) toast(`Welcome! +${c.amount} free tokens`);
   } else {
     show({ name: 'home' });
-    if (refunded) toast(`Your last round was interrupted. ${refunded} tokens refunded`);
+    if (refunded) toast('Your last round was interrupted before it began. Its life is back');
   }
   // Updates run in the background; the Play sheet waits a beat so it never pops over the first paint.
   void checkOta();

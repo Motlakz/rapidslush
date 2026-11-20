@@ -11,7 +11,7 @@ import { CTRL, inBox, layoutStage, spinBtn, type StageLayout } from '@/game/layo
 import { Platform } from 'react-native';
 import { setRoundGlass } from '@/game/render/glass';
 import { viewOf, type Banner, type Coach, type RenderCtx } from '@/game/render/view';
-import { show, toast } from '@/game/ui-store';
+import { show } from '@/game/ui-store';
 import { track } from '@/services/analytics';
 import { Sound, buzz } from '@/services/feedback';
 import { persist, save, uid, type Session } from '@/services/save';
@@ -65,11 +65,11 @@ export function newAttract() {
 
 // ---------- round lifecycle ----------
 export function startLevel(n: number, m: Mode = 'belt') {
-  const S = save(), cost = Server.cost();
+  const S = save();
   const res = Server.startSession(n, m, uid());
   if (!res.ok) {
-    track('token_balance_depleted', { level: n, machine: m, short: res.short });
-    return showOffer(res.short, n, m);
+    track('out_of_lives', { level: n, machine: m });
+    return show({ name: 'lives', n, m });
   }
   Object.assign(App, { session: res.session, mode: 'round', paused: false, settled: false, lastCd: 9, lastTick: 99, hbT: 0, acc: 0 });
   const r = createRound(n, { tune: S.tune, mode: m });
@@ -84,7 +84,6 @@ export function startLevel(n: number, m: Mode = 'belt') {
   App.coach = m === 'belt' && n === 1 && !S.flags.coach ? { stage: 0 } : null;
   App.banner = r.L.isNew ? { s: 'New: ' + r.L.isNew, t: 0 } : null;
   resetFx(); releaseAll();
-  if (cost) toast(`−${cost} tokens · ${Server.tokens()} left`);
   show({ name: 'none' });
 }
 
@@ -127,13 +126,6 @@ export function goHome() {
 export function nextLevel(n: number, m: Mode) {
   if (cfgFor(n, m).isNew) show({ name: 'intro', n, m });
   else startLevel(n, m);
-}
-export function showOffer(short: number, n: number, m: Mode) {
-  const S = save();
-  track('offer_shown', { trigger: short === 1 ? 'one_short' : S.flags.exhaustedOnce ? 'exhausted' : 'first_exhausted' });
-  show({ name: 'offer', short, n, m });
-  S.flags.exhaustedOnce = true; S.lastOffer = Date.now();
-  persist();
 }
 
 // ---------- stage layout (set by the arcade view whenever the window changes) ----------

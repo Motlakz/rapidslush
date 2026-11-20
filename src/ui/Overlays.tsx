@@ -5,9 +5,9 @@ import { useUI } from '@/game/ui-store';
 import { Home } from './screens/Home';
 import { Intro } from './screens/Intro';
 import { Levels } from './screens/Levels';
-import { Offer, Pause, Results } from './screens/Round';
+import { LivesPanel, Pause, Results } from './screens/Round';
 import { Settings } from './screens/Settings';
-import { Collection, Shop, Wallet } from './screens/Shop';
+import { Collection, Wallet } from './screens/Shop';
 import { useUi } from './scale';
 import { C, F, shadow } from './theme';
 
@@ -19,8 +19,7 @@ export function Overlays() {
     case 'levels': return <Levels m={o.m} />;
     case 'pause': return <Pause />;
     case 'results': return <Results res={o.res} rw={o.rw} />;
-    case 'offer': return <Offer short={o.short} n={o.n} m={o.m} />;
-    case 'shop': return <Shop confirm={o.confirm} />;
+    case 'lives': return <LivesPanel n={o.n} m={o.m} />;
     case 'wallet': return <Wallet />;
     case 'collection': return <Collection />;
     case 'settings': return <Settings />;

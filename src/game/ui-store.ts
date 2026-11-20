@@ -3,7 +3,6 @@
 import { create } from 'zustand';
 
 import type { Mode, RoundResult } from '@/engine';
-import type { PackId } from '@/game/content';
 import type { Rewards } from '@/services/save';
 
 export type Overlay =
@@ -13,8 +12,8 @@ export type Overlay =
   | { name: 'levels'; m: Mode }
   | { name: 'pause' }
   | { name: 'results'; res: RoundResult; rw: Partial<Rewards> }
-  | { name: 'offer'; short: number; n: number; m: Mode }
-  | { name: 'shop'; confirm?: PackId; back?: Overlay }
+  /** lives panel; with a level when a start was blocked by an empty heart bar */
+  | { name: 'lives'; n?: number; m?: Mode }
   | { name: 'wallet' }
   | { name: 'collection' }
   | { name: 'settings' };

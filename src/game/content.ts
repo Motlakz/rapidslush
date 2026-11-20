@@ -1,14 +1,24 @@
-// Content & economy data (plan §5, §6). Tunable data, not logic. Remote config replaces ECON in the backend phase.
-export const ECON = {
-  roundCost: 2, dailyFree: 10, freeCap: 20, firstPurchaseBonus: 10, milestoneTokens: 5,
-  packs: [
-    { id: 'mini', name: 'Mini refill', tokens: 10, price: '$0.49', tag: 'Top up' },
-    { id: 'pocket', name: 'Pocket pack', tokens: 30, price: '$0.99', tag: 'Popular' },
-    { id: 'party', name: 'Party pack', tokens: 100, price: '$2.99', tag: 'Great value' },
-    { id: 'mega', name: 'Mega pack', tokens: 250, price: '$5.99', tag: 'Best value' },
-  ],
+// Content & economy data (plan §6). Tunable data, not logic.
+
+/**
+ * Lives (decided 2026-11-20, the same rules as Slush Rush): winning costs nothing, failing costs a life, replaying a
+ * level you've already beaten is free. A life is taken when an at-risk round starts and handed back on a win, so
+ * quitting or force-closing mid-round can't dodge it. No real-money purchases for now: an empty heart bar refills
+ * with time, or with coins earned in play. See docs/economy.md.
+ */
+export const LIVES = {
+  max: 5,
+  /** one life back every 20 minutes */
+  refillMs: 20 * 60 * 1000,
+  /** clock moved back by more than this restarts the refill timer */
+  rewindSlackMs: 60 * 1000,
+  /** coins to fill every heart at once */
+  refillCoins: 150,
+  /** first clear of every 5th level */
+  milestoneCoins: 25,
+  /** daily challenge: coins plus one life */
+  challengeCoins: 40,
 } as const;
-export type PackId = (typeof ECON.packs)[number]['id'];
 
 export type CupPattern = 'stripes' | 'dots' | 'waves' | 'checker' | null;
 export interface CupDesign { id: string; name: string; price: number; rim: string; foot: string; pattern: CupPattern; alt: string }

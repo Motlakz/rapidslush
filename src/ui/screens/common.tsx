@@ -1,13 +1,14 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
-import { useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { ECON } from '@/game/content';
-import { show } from '@/game/ui-store';
+import { LIVES } from '@/game/content';
+import { show, toast } from '@/game/ui-store';
+import { Sound } from '@/services/feedback';
 import { save, saveRev, subscribeSave } from '@/services/save';
 import { Server } from '@/services/server';
-import { CloseIcon, TokenIcon } from '../icons';
-import { B, Btn, Card, Col, Row, Small } from '../kit';
+import { CloseIcon, CoinIcon, HeartIcon } from '../icons';
+import { Btn, BtnText, Card, Col, Num, Pill, Row, Small } from '../kit';
 import { C } from '../theme';
 import { useUi } from '../scale';
 
@@ -46,35 +47,73 @@ export function Panel({ children, width, style, onClose, closeLabel = 'Close', s
   );
 }
 
-export function resetIn() {
-  const n = new Date(), m = new Date(n);
-  m.setHours(24, 0, 0, 0);
-  const d = +m - +n;
-  return `${Math.floor(d / 3.6e6)}h ${Math.floor(d / 6e4) % 60}m`;
+/** Re-render every second while a countdown is showing. */
+export function useNow(active = true) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
 }
 
-/** Contextual top-up offer (plan §5.5): smallest pack the first time or when one token short. */
-export function OfferCard({ short, onBuy }: { short: number; onBuy?: () => void }) {
-  const S = save(), first = !S.flags.exhaustedOnce;
-  const pk = ECON.packs.find(p => p.id === (short <= 1 || first ? 'mini' : 'pocket'))!;
-  const ds = Server.dailyStatus();
+/** m:ss (or h:mm:ss) until `at`. */
+export function clock(ms: number) {
+  const t = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+/** Lives right now, ticking: the save only stores a snapshot, refills are counted as time passes. */
+export function useLives() {
+  useSave();
+  const first = Server.lives();
+  const now = useNow(first.n < first.max && !first.unlimited);
+  const L = Server.lives();
+  return { ...L, nextIn: L.nextAt ? L.nextAt - now : 0 };
+}
+
+/** Top-bar pill: hearts left and the countdown to the next one. Opens the lives panel. */
+export function LivesPill() {
+  const L = useLives();
+  const label = L.unlimited ? 'Unlimited' : L.n >= L.max ? 'Full' : clock(L.nextIn);
   return (
-    <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 14, borderColor: C.berry }}>
-      <Col style={{ gap: 4, flex: 1 }}>
-        <B>{short === 1 ? 'One token short' : 'Out of tokens'}</B>
-        <Small>{ds.claimable ? 'Your free refill is ready on the home screen.' : `Free refill of ${S.tune.daily} in ${resetIn()}.`} Or top up now. Tokens you buy never expire.</Small>
-      </Col>
-      <Btn tone="mango" onPress={() => { onBuy?.(); show({ name: 'shop', confirm: pk.id }); }}>{`${pk.tokens} tokens · ${pk.price}`}</Btn>
-    </Card>
+    <Pill onPress={() => show({ name: 'lives' })} label={L.unlimited ? 'Unlimited lives' : `${L.n} of ${L.max} lives, ${L.n >= L.max ? 'full' : 'next in ' + label}`}>
+      <HeartIcon s={26} on={L.n > 0 || L.unlimited} />
+      <Num style={{ fontSize: 19 }}>{L.unlimited ? '∞' : L.n}</Num>
+      <Small>{label}</Small>
+    </Pill>
   );
 }
 
-export function TokenCount({ size = 18 }: { size?: number }) {
+/** Row of hearts, filled for each life left. */
+export function Hearts({ s = 34 }: { s?: number }) {
+  const L = useLives();
+  return <Row style={{ gap: 4 }}>{Array.from({ length: L.max }, (_, k) => <HeartIcon key={k} s={s} on={L.unlimited || k < L.n} />)}</Row>;
+}
+
+/** The lives card: hearts, the countdown, the rules in one line, and a coin refill when it would help. */
+export function LivesCard({ compact }: { compact?: boolean }) {
+  const L = useLives(), coins = save().wallet.coins, full = L.n >= L.max || L.unlimited, afford = coins >= LIVES.refillCoins;
+  const refill = () => {
+    const r = Server.refillLives();
+    if (r.ok) { Sound.sfx('coin'); toast('Lives refilled'); }
+  };
   return (
-    <Row style={{ gap: 6 }}>
-      <TokenIcon s={size} />
-      <Small>{Server.tokens()} tokens</Small>
-    </Row>
+    <Col style={{ gap: 10 }}>
+      <Hearts s={compact ? 30 : 36} />
+      <Small>
+        {L.unlimited ? 'Unlimited lives are on.' : full ? 'All lives full.' : <>Next life in <Num style={{ fontSize: 17 }}>{clock(L.nextIn)}</Num>. One back every {LIVES.refillMs / 60000} minutes.</>}
+      </Small>
+      {!compact && <Small>Winning never costs a life, and levels you have beaten are always free to replay.</Small>}
+      {!full && (
+        <Btn tone="mango" disabled={!afford} onPress={refill} label={`Refill all lives for ${LIVES.refillCoins} coins`} style={{ alignSelf: 'flex-start' }}>
+          <BtnText tone="mango">Refill all</BtnText>
+          <Row style={{ gap: 4 }}><CoinIcon s={22} /><Num style={{ fontSize: 20 }}>{LIVES.refillCoins}</Num></Row>
+        </Btn>
+      )}
+      {!full && !afford && <Small>{`You have ${coins} coins. Every round you play earns more.`}</Small>}
+    </Col>
   );
 }
 

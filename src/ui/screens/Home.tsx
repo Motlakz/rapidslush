@@ -3,36 +3,28 @@ import { ScrollView } from 'react-native';
 
 import { SPIN } from '@/engine';
 import { newAttract } from '@/game/controller';
-import { CHALLENGES, ECON, LOCATIONS, MACHINES, playerLevel } from '@/game/content';
-import { show, toast } from '@/game/ui-store';
-import { Sound } from '@/services/feedback';
+import { CHALLENGES, LIVES, LOCATIONS, MACHINES, playerLevel } from '@/game/content';
+import { show } from '@/game/ui-store';
 import { setMachine } from '@/services/save';
 import { Server, maxFor, spinUnlocked, trackOf } from '@/services/server';
-import { CoinIcon, GearIcon, LockIcon, TokenIcon } from '../icons';
-import { Bar, Btn, BtnText, Card, Col, CostChip, H1, H3, Num, P, Pill, Row, Small, Spacer, Tag } from '../kit';
+import { CoinIcon, GearIcon, HeartIcon, LockIcon } from '../icons';
+import { Bar, Btn, BtnText, Card, Col, CostChip, H1, H3, Num, Pill, Row, Small, Spacer, Tag } from '../kit';
 import { C } from '../theme';
 import { useUi } from '../scale';
-import { Screen, resetIn, useSave } from './common';
+import { LivesCard, LivesPill, Screen, useSave } from './common';
 
 export function Home() {
   const S = useSave();
   const { safe, availH } = useUi();
   const m = S.machine === 'spin' && spinUnlocked() ? 'spin' : 'belt', T = trackOf(m), n = Math.min(T.highest, maxFor(m));
-  const ds = Server.dailyStatus(), pl = playerLevel(S.progress.xp), mach = MACHINES.find(x => x.id === m)!;
-  const ch = S.challenge, def = ch && CHALLENGES.find(c => c.id === ch.id), cost = Server.cost();
-
-  const claim = () => {
-    const r = Server.claimDaily();
-    if (r.ok) { Sound.sfx('coin'); toast(r.amount ? `+${r.amount} free tokens` : 'Claimed. Free balance already full'); }
-  };
+  const pl = playerLevel(S.progress.xp), mach = MACHINES.find(x => x.id === m)!;
+  const ch = S.challenge, def = ch && CHALLENGES.find(c => c.id === ch.id), risk = Server.atRisk(n, m);
 
   return (
     <Screen clear>
       {/* zIndex keeps the top bar above its neighbours, so the pills and the gear stay tappable everywhere */}
       <Row style={{ position: 'absolute', left: 24 + safe.left, right: 24 + safe.right, top: 20 + safe.top, gap: 10, zIndex: 30 }}>
-        <Pill onPress={() => show({ name: 'wallet' })} label="Wallet">
-          <TokenIcon /><Num style={{ fontSize: 19 }}>{Server.tokens()}</Num><Small>tokens</Small>
-        </Pill>
+        <LivesPill />
         <Pill onPress={() => show({ name: 'collection' })} label="Collection">
           <CoinIcon /><Num style={{ fontSize: 19 }}>{S.wallet.coins}</Num>
         </Pill>
@@ -65,32 +57,24 @@ export function Home() {
           </Row>
           <Btn tone="berry" size="big" onPress={() => show({ name: 'intro', n, m })} label={`Play level ${n}`}>
             <BtnText tone="berry" size="big">{`Play ${m === 'spin' ? 'Spin' : 'Level'} ${n}`}</BtnText>
-            <CostChip cost={cost}>{cost ? <TokenIcon s={20} /> : null}</CostChip>
+            <CostChip cost={risk ? 1 : 0}>{risk ? <HeartIcon s={22} /> : null}</CostChip>
           </Btn>
           <Row style={{ gap: 10 }}>
             <Btn size="sm" onPress={() => show({ name: 'levels', m })}>Levels</Btn>
-            <Btn size="sm" tone="mango" onPress={() => show({ name: 'shop' })}>Shop</Btn>
             <Btn size="sm" onPress={() => show({ name: 'collection' })}>Collection</Btn>
           </Row>
-          <Small>{`Each round costs ${S.tune.cost} tokens. You get ${S.tune.daily} free tokens a day, holding up to ${ECON.freeCap}. Tokens you buy never expire.`}</Small>
+          <Small>{`Winning never costs a life. Missing the quota on a new level does, and lives refill one every ${LIVES.refillMs / 60000} minutes. Beaten levels are always free.`}</Small>
         </Card>
 
         {/* bottom-anchored on tall screens; on short ones bottom-anchoring would push the cards off-screen, so top-align */}
         <Col style={{ flex: 1, maxWidth: 360, gap: 14, marginTop: availH < 640 ? 0 : 'auto', marginLeft: 'auto' }}>
           <Card style={{ gap: 10, padding: 24 }}>
-            <Row><H3>Daily refill</H3><Spacer /><TokenIcon s={34} /></Row>
-            {ds.claimable ? (
-              <>
-                <P style={{ fontSize: 18 }}>{ds.amount > 0 ? `+${ds.amount} free tokens are waiting.` : `Your free balance is full (${ECON.freeCap}). Claim to keep your streak.`}</P>
-                <Btn tone="lime" onPress={claim}>{`Claim${ds.amount ? ' +' + ds.amount : ''}`}</Btn>
-              </>
-            ) : (
-              <P style={{ fontSize: 18 }}>Claimed. Next refill in <Num style={{ fontSize: 18 }}>{resetIn()}</Num>.</P>
-            )}
+            <H3>Lives</H3>
+            <LivesCard compact />
           </Card>
           {def && ch && (
             <Card style={{ gap: 10, padding: 24 }}>
-              <Row><Tag tone="razz">Daily challenge</Tag><Spacer /><Small>+2 tokens · +40 coins</Small></Row>
+              <Row><Tag tone="razz">Daily challenge</Tag><Spacer /><Small>{`+1 life · +${LIVES.challengeCoins} coins`}</Small></Row>
               <H3>{def.text}</H3>
               <Row>
                 <Bar frac={ch.progress / def.goal} color={C.razz} style={{ flex: 1 }} />

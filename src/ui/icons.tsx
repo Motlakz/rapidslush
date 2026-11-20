@@ -2,11 +2,12 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { C } from './theme';
 
-export const TokenIcon = ({ s = 30 }: { s?: number }) => (
+/** A life: a berry heart with an ink outline and a shine; hollow when spent. */
+export const HeartIcon = ({ s = 30, on = true }: { s?: number; on?: boolean }) => (
   <Svg width={s} height={s} viewBox="0 0 24 24">
-    <Circle cx={12} cy={12} r={11} fill={C.berry} />
-    <Circle cx={12} cy={12} r={7.5} fill="none" stroke="#fff" strokeWidth={2} />
-    <Path d="M12 7.5v9M9.5 9.5h3.8a1.6 1.6 0 010 3.2h-2.6a1.6 1.6 0 000 3.2H14.5" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" />
+    <Path d="M12 20.6C7.4 17.4 3 13.9 3 9.4 3 6.6 5.1 4.6 7.6 4.6c1.8 0 3.3 1 4.4 2.6 1.1-1.6 2.6-2.6 4.4-2.6 2.5 0 4.6 2 4.6 4.8 0 4.5-4.4 8-9 11.2Z"
+      fill={on ? C.berry : '#E7DECF'} stroke={on ? C.ink : '#C9BFAE'} strokeWidth={1.8} strokeLinejoin="round" />
+    {on && <Path d="M6.4 8.6c.3-1.2 1.2-2 2.3-2.1" stroke="#fff" strokeWidth={1.6} strokeLinecap="round" fill="none" opacity={0.85} />}
   </Svg>
 );
 

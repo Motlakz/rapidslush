@@ -1,31 +1,33 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
-// In-round panels: Pause, Results, Offer.
+// In-round panels: Pause, Results, and the Lives panel (also opened from the top bar).
 import { type Mode, type RoundResult } from '@/engine';
-import { cfgFor, goHome, nextLevel, quitRound, restartRound, resumeRound, startLevel } from '@/game/controller';
+import { App, cfgFor, goHome, nextLevel, quitRound, restartRound, resumeRound, startLevel } from '@/game/controller';
 import { glassFor } from '@/game/content';
 import { show } from '@/game/ui-store';
+import { C } from '../theme';
 import { track } from '@/services/analytics';
-import { Sound } from '@/services/feedback';
 import { MAX_LEVEL } from '@/engine';
-import { save, type Rewards } from '@/services/save';
+import { type Rewards } from '@/services/save';
 import { Server, maxFor, trackOf } from '@/services/server';
-import { Stars, TokenIcon } from '../icons';
+import { HeartIcon, Stars } from '../icons';
 import { B, Btn, BtnText, Card, Col, CostChip, H2, Num, P, Row, Small, Spacer, Stat, Tag } from '../kit';
-import { OfferCard, Panel, Screen, resetIn, useSave } from './common';
+import { LivesCard, Panel, Screen, useLives, useSave } from './common';
 import { SettingsToggles } from './Settings';
 
-function PlayBtn({ title, onPress, big = true }: { title: string; onPress: () => void; big?: boolean }) {
-  const cost = Server.cost();
+/** Play button with what it puts at stake: a heart on a new level, Free on a beaten one. */
+function PlayBtn({ title, onPress, n, m, big = true }: { title: string; onPress: () => void; n: number; m: Mode; big?: boolean }) {
+  const risk = Server.atRisk(n, m);
   return (
     <Btn tone="berry" size={big ? 'big' : 'md'} onPress={onPress} label={title}>
       <BtnText tone="berry" size={big ? 'big' : 'md'}>{title}</BtnText>
-      <CostChip cost={cost}>{cost ? <TokenIcon s={18} /> : null}</CostChip>
+      <CostChip cost={risk ? 1 : 0}>{risk ? <HeartIcon s={20} /> : null}</CostChip>
     </Btn>
   );
 }
 
 export function Pause() {
   useSave();
+  const r = App.round, risk = !!App.session?.life, again = !!r && Server.atRisk(r.n, r.mode);
   return (
     <Screen>
       <Panel width={600}>
@@ -33,10 +35,10 @@ export function Pause() {
         <Btn tone="lime" size="big" onPress={resumeRound}>Resume</Btn>
         <Btn onPress={restartRound} label="Restart">
           <BtnText>Restart</BtnText>
-          <CostChip cost={Server.cost()} tone="default">{Server.cost() ? <TokenIcon s={18} /> : null}</CostChip>
+          <CostChip cost={again ? 1 : 0} tone="default">{again ? <HeartIcon s={20} /> : null}</CostChip>
         </Btn>
         <Btn onPress={quitRound}>Quit to menu</Btn>
-        <Small>Quitting ends the round. The tokens it cost stay spent.</Small>
+        <Small>{risk ? 'Quitting or restarting counts as a miss: the life this round put on the line stays spent.' : 'This level is beaten, so leaving costs nothing.'}</Small>
         <SettingsToggles compact />
       </Panel>
     </Screen>
@@ -52,17 +54,24 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
     : res.reason === 'flooded' ? 'The waste meter filled up. Release a bit earlier: the tap keeps dripping.'
       : spin ? `You served ${res.served} of ${res.quota}. Pick the flavour before the cup reaches the window, so every pass counts.`
         : `You served ${res.served} of ${res.quota}. Tap SEND as soon as the cups are full to keep the belt moving.`;
-  const tokens = Server.tokens(), cost = Server.cost(), nextN = Math.min(res.level + 1, maxL);
+  const lives = Server.lives(), nextN = Math.min(res.level + 1, maxL);
   const glassNext = !spin && res.win && res.level < MAX_LEVEL && glassFor(res.level + 1).tier > glassFor(res.level).tier ? glassFor(res.level + 1) : null;
 
-  // Plan §5.5: offer a top-up only when they can't afford a retry; after 3 fails suggest an easier level, never a purchase.
+  // Out of lives for a retry: say when the next one comes and how to keep playing. After 3 fails suggest an easier level.
   // The suggestion is anchored to their top level (the wall), not to whichever level they just replayed: it stays one
   // or two below the wall instead of drifting further down with every warm-up round. Label and target share one
   // variable, so the button always starts exactly the level it names.
   const wall = Math.min(trackOf(m).highest, maxL);
   const warm = Math.max(1, Math.max(wall - 2, Math.min(res.level, wall) - 1));
   let offer = null;
-  if (tokens < cost) offer = <OfferCard short={cost - tokens} />;
+  if (!res.win && lives.n <= 0 && Server.atRisk(res.level, m)) {
+    offer = (
+      <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 16, borderColor: C.berry }}>
+        <Col style={{ gap: 4, flex: 1 }}><B>Out of lives</B><LivesCard compact /></Col>
+        <Btn size="sm" onPress={() => show({ name: 'levels', m })}>Replay a beaten level</Btn>
+      </Card>
+    );
+  }
   else if (!res.win && S.stats.fails >= 3 && warm < res.level) {
     offer = (
       <Card flat style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -101,7 +110,8 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
         <Row style={{ gap: 10, flexWrap: 'wrap' }}>
           <Tag tone="grape">{`+${rw.xp || 0} XP${rw.levelUp ? ' · Level up!' : ''}`}</Tag>
           <Tag tone="mango">{`+${rw.coins || 0} coins`}</Tag>
-          {!!rw.tokens && <Tag tone="berry">{`+${rw.tokens} tokens`}</Tag>}
+          {rw.lifeBack && <Tag tone="berry">Life kept</Tag>}
+          {!!rw.lives && <Tag tone="berry">{`+${rw.lives} life`}</Tag>}
           {rw.spinUnlocked && <Tag tone="razz">New machine: Spin Bar is open!</Tag>}
           {glassNext && <Tag tone="razz">{`Next level: the shack gets ${glassNext.name.toLowerCase()}!`}</Tag>}
           {rw.challenge && <Tag tone="razz">{`Challenge done: ${rw.challenge}`}</Tag>}
@@ -110,11 +120,11 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
         <Row style={{ marginTop: 4 }}>
           {res.win && res.level < maxL ? (
             <>
-              <PlayBtn title="Next level" onPress={() => nextLevel(nextN, m)} />
+              <PlayBtn title="Next level" n={nextN} m={m} onPress={() => nextLevel(nextN, m)} />
               <Btn onPress={() => startLevel(res.level, m)}>Replay</Btn>
             </>
           ) : (
-            <PlayBtn title="Try again" onPress={() => startLevel(res.level, m)} />
+            <PlayBtn title="Try again" n={res.level} m={m} onPress={() => startLevel(res.level, m)} />
           )}
           <Spacer />
           <Btn onPress={goHome}>Menu</Btn>
@@ -124,21 +134,22 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
   );
 }
 
-export function Offer({ short, n, m }: { short: number; n: number; m: Mode }) {
-  useSave();
-  const S = save(), ds = Server.dailyStatus();
+/**
+ * Lives: the hearts, the countdown, a coin refill. Opened from the top bar, or with a level when a start was
+ * blocked by an empty heart bar, in which case it offers to start that level the moment a life comes back.
+ */
+export function LivesPanel({ n, m }: { n?: number; m?: Mode }) {
+  const L = useLives(), blocked = n !== undefined && m !== undefined;
   return (
     <Screen>
-      <Panel width={560} onClose={() => { track('offer_dismissed'); goHome(); }}>
-        <H2>{short === 1 ? 'One token short' : 'Out of tokens'}</H2>
-        <P>{`Level ${n} costs ${Server.cost()} tokens and you have ${Server.tokens()}.`}</P>
-        {ds.claimable ? (
-          <Btn tone="lime" size="big" onPress={() => { const r = Server.claimDaily(); if (r.ok) Sound.sfx('coin'); show({ name: 'intro', n, m }); }}>{`Claim free refill +${ds.amount}`}</Btn>
-        ) : (
-          <Small>Free refill of {S.tune.daily} tokens in <Num style={{ fontSize: 17 }}>{resetIn()}</Num>.</Small>
-        )}
-        <OfferCard short={short} />
-        <Btn size="sm" onPress={() => show({ name: 'shop' })} style={{ alignSelf: 'flex-start' }}>See all packs</Btn>
+      <Panel width={560} onClose={() => { if (blocked) track('out_of_lives_dismissed'); goHome(); }}>
+        <H2>{blocked && L.n <= 0 ? 'Out of lives' : 'Lives'}</H2>
+        {blocked && <P>{L.n > 0 ? 'A life is back. Ready when you are.' : `Level ${n} is new, so it needs a life.`}</P>}
+        <LivesCard />
+        <Row style={{ gap: 10, flexWrap: 'wrap' }}>
+          {blocked && L.n > 0 && <PlayBtn title={`Play level ${n}`} n={n!} m={m!} onPress={() => startLevel(n!, m!)} />}
+          <Btn onPress={() => show({ name: 'levels', m: m ?? 'belt' })}>Replay a beaten level</Btn>
+        </Row>
       </Panel>
     </Screen>
   );

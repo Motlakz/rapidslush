@@ -4,14 +4,14 @@ import { cfgFor, goHome, keyHintsOn, startLevel } from '@/game/controller';
 import { glassFor } from '@/game/content';
 import { setFlag } from '@/services/save';
 import { Server, trackOf } from '@/services/server';
-import { Stars, TokenIcon } from '../icons';
+import { HeartIcon, Stars } from '../icons';
 import { BtnText, Btn, Card, Col, CostChip, H2, Num, P, Row, Small, Spacer, Tag, B } from '../kit';
 import { C } from '../theme';
-import { Panel, Screen, TokenCount, useSave } from './common';
+import { Hearts, Panel, Screen, useSave } from './common';
 
 export function Intro({ n, m }: { n: number; m: Mode }) {
   const S = useSave();
-  const spin = m === 'spin', L = cfgFor(n, m), T = trackOf(m), stars = T.stars[n] || 0, best = T.best[n], cost = Server.cost();
+  const spin = m === 'spin', L = cfgFor(n, m), T = trackOf(m), stars = T.stars[n] || 0, best = T.best[n], risk = Server.atRisk(n, m);
   const feats = (spin
     ? [L.taps + ' flavours', L.slots + ' cups', 'Up to ' + L.maxLaps + ' laps', L.mix.duo || L.mix.uneven ? '2 layers' : null,
       L.topping !== null ? TOPPINGS[L.topping].name : null, L.dir < 0 ? 'Reverse spin' : null, L.persist ? 'Cleanup' : null]
@@ -46,18 +46,20 @@ export function Intro({ n, m }: { n: number; m: Mode }) {
           {!!best && <Card flat style={{ paddingVertical: 16, gap: 2 }}><Small>Best</Small><Num style={{ fontSize: 28 }}>{best.toLocaleString('en-US')}</Num></Card>}
         </Row>
         <Row style={{ gap: 6, flexWrap: 'wrap' }}>{feats.map(f => <Tag key={f}>{f}</Tag>)}</Row>
-        {!S.flags.costNote && (
+        {(!S.flags.livesNote || !risk) && (
           <Small style={{ backgroundColor: C.cream2, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 14, overflow: 'hidden' }}>
-            Tokens are spent when the round starts. Leaving a round partway still uses them, but if the app crashes before the round really begins, you get them back.
+            {risk
+              ? 'A new level puts one life on the line. Meet the quota and you keep it. Quitting partway counts as a miss.'
+              : "You've beaten this level, so replaying it is free."}
           </Small>
         )}
         <Row>
-          <Btn tone="berry" size="big" label="Start" onPress={() => { setFlag('costNote', true); startLevel(n, m); }}>
+          <Btn tone="berry" size="big" label="Start" onPress={() => { if (risk) setFlag('livesNote', true); startLevel(n, m); }}>
             <BtnText tone="berry" size="big">Start</BtnText>
-            <CostChip cost={cost}>{cost ? <TokenIcon s={18} /> : null}</CostChip>
+            <CostChip cost={risk ? 1 : 0}>{risk ? <HeartIcon s={20} /> : null}</CostChip>
           </Btn>
           <Spacer />
-          <TokenCount />
+          <Hearts s={26} />
         </Row>
         <Small>
           {spin ? 'Hold a flavour button while the cup is in the lit window.' : 'Hold the tap buttons to pour and swipe the counter to clean.'}

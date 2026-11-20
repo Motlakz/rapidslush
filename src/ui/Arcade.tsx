@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { App, setStageLayout, goHome, keyDown, keyUp, onBackground, pauseRound, releaseAll, resumeRound } from '@/game/controller';
 import GameCanvasHost from '@/game/GameCanvasHost';
 import { layoutStage } from '@/game/layout';
-import { show, useUI } from '@/game/ui-store';
+import { useUI } from '@/game/ui-store';
 import { flush } from '@/services/save';
 import { Overlays, Toast } from './Overlays';
 import { Btn } from './kit';
@@ -105,7 +105,6 @@ function useLifecycle() {
         if (App.paused) resumeRound(); else pauseRound();
         return true;
       }
-      if (o.name === 'shop' && o.confirm) { show({ name: 'shop' }); return true; }
       if (o.name !== 'home') { goHome(); return true; }
       return false; // on Home, back leaves the app
     });

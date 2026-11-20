@@ -1,10 +1,10 @@
-// MOCK of the Next.js API (plan §10). Same contract the real routes will have: an immutable ledger, idempotency
-// keys on every mutation, token reservation at round start, settlement with plausibility checks, daily claims.
-// It runs locally against the save so the full loop is playable now; Phase 3 swaps this for HTTP calls.
-import { CHALLENGES, CUPS, ECON, SKINS, playerLevel, type PackId } from '@/game/content';
+// Local game service: an immutable coin ledger, idempotency keys on every mutation, lives taken at round start and
+// handed back on a win, settlement with plausibility checks. Runs on-device against the save; the same contract can
+// move behind an API later.
+import { CHALLENGES, CUPS, LIVES, SKINS, playerLevel } from '@/game/content';
 import { MAX_LEVEL, SPIN, type Mode, type RoundResult } from '@/engine';
 import { track } from './analytics';
-import { flush, persist, save, uid, type Currency, type Rewards, type Session, type Track } from './save';
+import { flush, persist, save, uid, type Currency, type Lives, type Rewards, type Session, type Track } from './save';
 
 export const today = () => {
   const d = new Date();
@@ -21,9 +21,49 @@ export const spinUnlocked = () => save().progress.highest > SPIN.UNLOCK;
 /** Dev tuning panel only. */
 export function unlockAll() { save().progress.highest = MAX_LEVEL; trackOf('spin').highest = SPIN.MAX_LEVEL; persist(); }
 
+/**
+ * Lives right now from the stored snapshot, without writing anything (safe to call while rendering). A clock wound
+ * back restarts the refill wait; winding it forward only cheats the cheater's own single-player game.
+ */
+export function livesAt(L: Lives, now = Date.now()) {
+  const stamp = now < L.lastSeen - LIVES.rewindSlackMs ? now : L.stamp;
+  if (L.n >= LIVES.max) return { n: L.n, stamp: now, nextAt: 0 };
+  const gained = Math.max(0, Math.floor((now - stamp) / LIVES.refillMs));
+  const n = Math.min(LIVES.max, L.n + gained);
+  const next = n >= LIVES.max ? now : stamp + gained * LIVES.refillMs;
+  return { n, stamp: next, nextAt: n >= LIVES.max ? 0 : next + LIVES.refillMs };
+}
+
+/** Fold refills earned so far into the save, then apply `delta` (-1 spend, +1 refund). */
+function settleLives(delta = 0) {
+  const S = save(), now = Date.now(), cur = livesAt(S.lives, now);
+  const wasFull = cur.n >= LIVES.max;
+  const n = Math.max(0, Math.min(LIVES.max, cur.n + delta));
+  // a full bar has no countdown: the wait for the next life starts when the first one is spent
+  S.lives = { n, stamp: wasFull || n >= LIVES.max ? now : cur.stamp, lastSeen: Math.max(now, Math.min(S.lives.lastSeen, now + LIVES.rewindSlackMs)) };
+}
+
 export const Server = {
-  tokens() { const w = save().wallet; return w.free + w.purchased; },
-  cost() { const t = save().tune; return t.infinite ? 0 : t.cost; },
+  /** Lives now: count, when the next one arrives (0 when full), and whether lives are switched off (dev). */
+  lives() {
+    const S = save(), cur = livesAt(S.lives);
+    return { n: cur.n, max: LIVES.max, nextAt: cur.nextAt, unlimited: S.tune.infinite };
+  },
+  /** A round on a level not beaten yet risks a life; replaying a beaten level is always free. */
+  atRisk(level: number, mode: Mode) { return !save().tune.infinite && !(trackOf(mode).stars[level] > 0); },
+  /** Fill every heart with coins earned in play. */
+  refillLives() {
+    const S = save(), cur = livesAt(S.lives);
+    if (cur.n >= LIVES.max) return { ok: false as const, error: 'FULL' as const };
+    if (S.wallet.coins < LIVES.refillCoins) return { ok: false as const, error: 'COINS' as const };
+    this.ledger('COIN', -LIVES.refillCoins, 'LIFE_REFILL', 'lives', 'refill:' + uid());
+    settleLives(LIVES.max);
+    persist();
+    track('lives_refilled', { from: cur.n, coins: LIVES.refillCoins });
+    return { ok: true as const };
+  },
+  /** Dev tuning panel only. */
+  devRefill() { settleLives(LIVES.max); persist(); },
 
   ledger(currency: Currency, amount: number, type: string, ref: string, key: string) {
     const S = save();
@@ -31,19 +71,23 @@ export const Server = {
     S.idem[key] = 1;
     S.ledger.push({ id: uid().slice(0, 8), currency, amount, type, ref, at: Date.now() });
     if (S.ledger.length > 300) S.ledger.splice(0, S.ledger.length - 300);
-    if (currency === 'FREE_TOKEN') S.wallet.free += amount;
-    else if (currency === 'PURCHASED_TOKEN') S.wallet.purchased += amount;
-    else S.wallet.coins += amount;
+    S.wallet.coins += amount;
     return true;
   },
 
-  /** Session recovery (plan §5.4): an ACTIVE session found at boot was interrupted. Refund if it barely began. */
+  /**
+   * Session recovery: an ACTIVE session found at boot was interrupted. If it barely began (a crash, not a dodge),
+   * its life comes back; otherwise it counts as a loss, like quitting.
+   */
   bootstrap() {
     const S = save();
     let refunded = 0;
     for (const s of Object.values(S.sessions)) {
       if (s.status !== 'ACTIVE') continue;
-      if ((s.elapsed || 0) < 5) { this.refund(s); refunded += s.cost; } else s.status = 'INTERRUPTED';
+      if ((s.elapsed || 0) < 5) {
+        s.status = 'REFUNDED';
+        if (s.life) { settleLives(1); refunded++; }
+      } else s.status = 'INTERRUPTED';
     }
     const d = today();
     if (!S.challenge || S.challenge.day !== d) {
@@ -55,38 +99,19 @@ export const Server = {
     return { refunded };
   },
 
-  refund(s: Session) {
-    s.status = 'REFUNDED';
-    if (s.fromFree) this.ledger('FREE_TOKEN', s.fromFree, 'ROUND_REFUND', s.id, 'refund-free:' + s.id);
-    if (s.fromPaid) this.ledger('PURCHASED_TOKEN', s.fromPaid, 'ROUND_REFUND', s.id, 'refund-paid:' + s.id);
-  },
-
-  dailyStatus() {
-    const S = save(), amt = Math.max(0, Math.min(S.tune.daily, ECON.freeCap - S.wallet.free));
-    return { claimable: S.daily.last !== today(), amount: amt, capped: amt < S.tune.daily };
-  },
-
-  claimDaily() {
-    const S = save(), st = this.dailyStatus(), d = today();
-    if (!st.claimable) return { ok: false, amount: 0 };
-    S.daily.last = d;
-    if (st.amount > 0) this.ledger('FREE_TOKEN', st.amount, 'DAILY_CLAIM', d, 'daily:' + d);
-    persist();
-    track('daily_reward_claimed', { amount: st.amount });
-    return { ok: true, amount: st.amount };
-  },
-
   startSession(level: number, mode: Mode, idemKey: string):
     | { ok: true; session: Session }
-    | { ok: false; error: 'INSUFFICIENT'; short: number } {
+    | { ok: false; error: 'NO_LIVES'; nextAt: number } {
     const S = save();
     if (S.sessions[idemKey]) return { ok: true, session: S.sessions[idemKey] };
-    const cost = this.cost(), have = this.tokens();
-    if (have < cost) return { ok: false, error: 'INSUFFICIENT', short: cost - have };
-    const fromFree = Math.min(S.wallet.free, cost), fromPaid = cost - fromFree;
-    const s: Session = { id: idemKey, level, mode, status: 'ACTIVE', cost, fromFree, fromPaid, startedAt: Date.now(), elapsed: 0 };
-    if (fromFree) this.ledger('FREE_TOKEN', -fromFree, 'ROUND_ENTRY', s.id, 'entry-free:' + s.id);
-    if (fromPaid) this.ledger('PURCHASED_TOKEN', -fromPaid, 'ROUND_ENTRY', s.id, 'entry-paid:' + s.id);
+    const life = this.atRisk(level, mode);
+    if (life) {
+      const cur = this.lives();
+      if (cur.n <= 0) return { ok: false, error: 'NO_LIVES', nextAt: cur.nextAt };
+      settleLives(-1);
+      track('life_spent', { level, machine: mode, left: S.lives.n });
+    }
+    const s: Session = { id: idemKey, level, mode, status: 'ACTIVE', life, startedAt: Date.now(), elapsed: 0 };
     S.sessions[idemKey] = s;
     const ids = Object.keys(S.sessions);
     if (ids.length > 25) delete S.sessions[ids[0]];
@@ -111,16 +136,18 @@ export const Server = {
     // plausibility checks (plan §11.2)
     const plausible = res.score <= res.served * 1500 + 2000 && res.elapsed >= res.served * 0.5;
     const P = S.progress, T = trackOf(res.mode), maxL = maxFor(res.mode), mk = res.mode === 'spin' ? 'spin:' : '';
-    const rewards: Rewards = { xp: 0, coins: 0, tokens: 0, levelUp: false, unlocked: null, challenge: null, firstClear: false, spinUnlocked: false };
+    const rewards: Rewards = { xp: 0, coins: 0, lives: 0, lifeBack: false, levelUp: false, unlocked: null, challenge: null, firstClear: false, spinUnlocked: false };
+    // a win hands back the life the round took
+    if (res.win && s.life) { settleLives(1); rewards.lifeBack = true; track('life_refunded', { level: res.level, machine: res.mode }); }
     if (plausible) {
       rewards.xp = res.win ? 20 + (res.stars === 3 ? 15 : 0) : 5;
-      rewards.coins = res.served * 3 + res.stars * 10;
+      const roundCoins = res.served * 3 + res.stars * 10;
+      rewards.coins += roundCoins;
       const prevStars = T.stars[res.level] || 0;
       if (res.win && !prevStars) {
         rewards.firstClear = true;
-        if (res.level % 5 === 0) {
-          rewards.tokens = ECON.milestoneTokens;
-          this.ledger('FREE_TOKEN', rewards.tokens, 'MILESTONE', mk + 'L' + res.level, 'milestone:' + mk + res.level);
+        if (res.level % 5 === 0 && this.ledger('COIN', LIVES.milestoneCoins, 'MILESTONE', mk + 'L' + res.level, 'milestone:' + mk + res.level)) {
+          rewards.coins += LIVES.milestoneCoins;
         }
       }
       T.stars[res.level] = Math.max(prevStars, res.stars);
@@ -131,7 +158,7 @@ export const Server = {
       const lvBefore = playerLevel(P.xp).level;
       P.xp += rewards.xp;
       rewards.levelUp = playerLevel(P.xp).level > lvBefore;
-      this.ledger('COIN', rewards.coins, 'ROUND_REWARD', s.id, 'coins:' + s.id);
+      this.ledger('COIN', roundCoins, 'ROUND_REWARD', s.id, 'coins:' + s.id);
       // daily challenge
       const ch = S.challenge, def = ch && CHALLENGES.find(c => c.id === ch.id);
       if (ch && def && !ch.done) {
@@ -142,9 +169,9 @@ export const Server = {
         ch.progress = Math.min(def.goal, ch.progress + inc);
         if (ch.progress >= def.goal) {
           ch.done = true; rewards.challenge = def.text;
-          this.ledger('FREE_TOKEN', 2, 'CHALLENGE', ch.day, 'challenge:' + ch.day);
-          this.ledger('COIN', 40, 'CHALLENGE', ch.day, 'challenge-coins:' + ch.day);
-          P.xp += 50; rewards.tokens += 2; rewards.coins += 40; rewards.xp += 50;
+          this.ledger('COIN', LIVES.challengeCoins, 'CHALLENGE', ch.day, 'challenge-coins:' + ch.day);
+          settleLives(1);
+          P.xp += 50; rewards.lives += 1; rewards.coins += LIVES.challengeCoins; rewards.xp += 50;
         }
       }
     }
@@ -153,22 +180,6 @@ export const Server = {
     s.settlement = { rewards, plausible };
     persist(); flush();
     return { ok: true, rewards, plausible };
-  },
-
-  /** Prototype checkout. In the app this is RevenueCat + Google Play Billing, credited only after server verification. */
-  purchase(packId: PackId) {
-    const S = save(), pk = ECON.packs.find(p => p.id === packId);
-    if (!pk) return { ok: false as const };
-    const txn = 'GPA.' + uid().slice(0, 13);
-    this.ledger('PURCHASED_TOKEN', pk.tokens, 'PURCHASE', txn, 'purchase:' + txn);
-    let bonus = 0;
-    if (!S.flags.firstPurchase) {
-      S.flags.firstPurchase = true; bonus = ECON.firstPurchaseBonus;
-      this.ledger('PURCHASED_TOKEN', bonus, 'FIRST_PURCHASE_BONUS', txn, 'fpb:' + S.playerId);
-    }
-    S.purchases.push({ txn, packId, tokens: pk.tokens, bonus, at: Date.now(), status: 'VERIFIED' });
-    persist(); flush();
-    return { ok: true as const, tokens: pk.tokens, bonus, txn };
   },
 
   buyItem(kind: 'cups' | 'skins', id: string) {
