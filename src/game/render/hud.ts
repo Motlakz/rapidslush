@@ -4,6 +4,7 @@ import { clamp, easeBack } from '@/engine/util';
 import { CTRL, spinBtn, type Box } from '@/game/layout';
 import { glassGeom, roundGlass, uy } from './glass';
 import type { Painter } from './painter';
+import { flavourIcon } from './icons';
 import { CREAM, INK, drawLock, drawToppingIcon, glyph } from './shapes';
 import { viewOf, type RenderCtx } from './view';
 
@@ -104,8 +105,8 @@ export function drawControls(g: Painter, r: Round, ctx: RenderCtx) {
     for (let i = 0; i < L.taps; i++) {
       const b = spinBtn(i, L.taps), F = FL[L.flavours[i]], dark = F.id === 'lime' || F.id === 'mango';
       const dy = pillButton(g, b, F.color, F.deep, r.hold[i] && live, live ? 1 : 0.7);
-      g.fillCircle(b.x + 38, b.y + 41 + dy, 19, 'rgba(255,255,255,.92)');
-      glyph(g, F.glyph, b.x + 38, b.y + 41 + dy, 10.5, F.deep);
+      g.fillCircle(b.x + 38, b.y + 41 + dy, 21, 'rgba(255,255,255,.95)');
+      flavourIcon(g, F, b.x + 38, b.y + 41 + dy, 29);
       fitLabel(g, F.name, b.x + 62, b.x + b.w - (kb ? 44 : 16), b.y + 42 + dy, 20, dark ? INK : '#fff');
       if (kb) keyChip(g, 'ASDFG'[i], b.x + b.w - 24, b.y + 41 + dy);
     }
@@ -123,8 +124,8 @@ export function drawControls(g: Painter, r: Round, ctx: RenderCtx) {
     }
     const F = FL[L.flavours[i]], dark = F.id === 'lime' || F.id === 'mango';
     const dy = pillButton(g, b, F.color, F.deep, r.hold[i] && live, live ? 1 : 0.7);
-    g.fillCircle(b.x + 40, b.y + 41 + dy, 20, 'rgba(255,255,255,.92)');
-    glyph(g, F.glyph, b.x + 40, b.y + 41 + dy, 11, F.deep);
+    g.fillCircle(b.x + 40, b.y + 41 + dy, 22, 'rgba(255,255,255,.95)');
+    flavourIcon(g, F, b.x + 40, b.y + 41 + dy, 31);
     fitLabel(g, F.name, b.x + 66, b.x + b.w - (kb ? 46 : 18), b.y + 42 + dy, 21, dark ? INK : '#fff');
     if (kb) keyChip(g, 'ASD'[i], b.x + b.w - 26, b.y + 41 + dy);
   }

@@ -3,7 +3,8 @@ import { BELT_Y, FLAVOURS as FL, SPIN, STATION_X, W, cupUnder, puddleR, type Rou
 import { clamp } from '@/engine/util';
 import { roundGlass } from './glass';
 import type { Painter } from './painter';
-import { CREAM, INK, drawLock, drawToppingIcon, glyph } from './shapes';
+import { flavourBadge, flavourIcon } from './icons';
+import { CREAM, INK, drawLock, drawToppingIcon } from './shapes';
 import { fillSlush } from './textures';
 import { viewOf, type RenderCtx } from './view';
 
@@ -39,7 +40,7 @@ export function drawMachine(g: Painter, r: Round, t: number, ctx: RenderCtx) {
       g.restore();
       g.rr(x - 64, 116, 12, 108, 6); g.fill('rgba(255,255,255,.55)');
       g.rr(x - 52, 118, 104, 28, 14); g.fill(CREAM);
-      glyph(g, F.glyph, x - 36, 132, 9, F.deep);
+      flavourIcon(g, F, x - 36, 132, 22);
       g.text(F.name, x - 22, 133, { size: F.name.length > 6 ? 14 : 15, c: INK, align: 'left' });
     } else {
       g.rr(x - 72, 110, 144, 124, 24); g.fill(sk.deep);
@@ -145,7 +146,7 @@ export function drawSpinMachine(g: Painter, r: Round, t: number, ctx: RenderCtx)
     g.fill(tier === 0 ? F.color : g.linear(0, top, 0, 214, [[0, F.color], [1, F.deep]]));
     if (tier >= 2) { g.clip(); fillSlush(g, L.flavours[i], x - tw / 2, top - 6, tw, 220 - top, x); }
     g.restore();
-    g.fillCircle(x, 128, 12, CREAM); glyph(g, F.glyph, x, 128, 7.5, F.deep);
+    flavourBadge(g, F, x, 128, 14);
     // feed pipe to the single nozzle
     g.lineWidth = 7; g.lineCap = 'round';
     g.beginPath(); g.moveTo(x, 214); g.quadraticCurveTo(x, 246, 640, 252); g.stroke(r.flow[i] > 0 ? F.color : sk.metal);

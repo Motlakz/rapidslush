@@ -180,6 +180,9 @@ export class Painter {
   fill(style?: Fill) { this.canvas.drawPath(this.path(), this.prep(style ?? this.fillStyle, false)); }
   stroke(style?: Fill) { this.canvas.drawPath(this.path(), this.prep(style ?? this.strokeStyle, true)); }
   clip() { this.canvas.clipPath(this.path(), ClipOp.Intersect, true); }
+  /** draw a prebuilt (cached) path, e.g. an icon parsed once from SVG */
+  fillPath(p: SkPath, style?: Fill) { this.canvas.drawPath(p, this.prep(style ?? this.fillStyle, false)); }
+  strokePath(p: SkPath, style?: Fill) { this.canvas.drawPath(p, this.prep(style ?? this.strokeStyle, true)); }
   fillRect(x: number, y: number, w: number, h: number, style?: Fill) {
     this.canvas.drawRect({ x, y, width: w, height: h }, this.prep(style ?? this.fillStyle, false));
   }

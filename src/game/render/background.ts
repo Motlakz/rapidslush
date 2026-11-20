@@ -6,6 +6,7 @@ import { BELT_Y, ENTRY_X, FLAVOURS, H, W, mulberry32, type Round } from '@/engin
 import type { StageLayout } from '@/game/layout';
 import { glassGeom, glassPath, roundGlass } from './glass';
 import { Painter, hexA } from './painter';
+import { flavourIcon } from './icons';
 import { CREAM, INK } from './shapes';
 
 interface Sky {
@@ -121,7 +122,7 @@ function paintBackground(g: Painter, phase: number) {
   g.rr(168, 336, 150, 110, 10); g.fill('#7A4B2E'); g.rr(175, 343, 136, 96, 6); g.fill('#2E3B36');
   g.text('MENU', 243, 360, { size: 15, c: '#F4F1E6' });
   FLAVOURS.slice(0, 4).forEach((F, k) => {
-    g.fillCircle(190, 380 + k * 15, 4.5, F.color);
+    flavourIcon(g, F, 190, 380 + k * 15, 13);
     g.text(F.name, 202, 381 + k * 15, { size: 11, c: 'rgba(244,241,230,.85)', align: 'left' });
   });
   // window frame, shelf, posts

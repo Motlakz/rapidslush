@@ -2,7 +2,8 @@ import { BELT_Y, CUP_H, CUP_RT, FLAVOURS as FL, mulberry32, type Cup, type Round
 import { clamp, easeBack, lerp } from '@/engine/util';
 import { glassGeom, glassPath, roundGlass, uy, type GlassGeom } from './glass';
 import type { Painter } from './painter';
-import { INK, drawToppingIcon, drawWhip, glyph } from './shapes';
+import { flavourBadge } from './icons';
+import { INK, drawToppingIcon, drawWhip } from './shapes';
 import { fillSlush, sparkle } from './textures';
 import type { RenderCtx } from './view';
 
@@ -242,7 +243,7 @@ function drawToppingOnCup(g: Painter, c: Cup, G: GlassGeom, x: number, surf: num
 }
 
 function drawTargets(g: Painter, c: Cup, r: Round, G: GlassGeom, x: number, rimW: number, tol: number, tier: number) {
-  let cum = 0;
+  let cum = 0, prevY = -1e9, prevLeft = false;
   const o = c.order;
   o.layers.forEach((l, k) => {
     cum += l.amt;
@@ -256,30 +257,31 @@ function drawTargets(g: Painter, c: Cup, r: Round, G: GlassGeom, x: number, rimW
     const hA = G.hw(yA) + 2, hB = G.hw(yB) + 2;
     g.lineWidth = 2.5; g.beginPath();
     g.moveTo(x + hA + 5, yA); g.lineTo(x + hA, yA); g.lineTo(x + hB, yB); g.lineTo(x + hB + 5, yB); g.stroke(ink);
-    g.fillCircle(x + G.hw(y) + 14, y, 9, '#fff');
-    glyph(g, F.glyph, x + G.hw(y) + 14, y, 6.5, F.deep);
+    // flavour badge beside the mark; flips to the other side when two marks sit too close to share one
+    const left = Math.abs(y - prevY) < 34 && !prevLeft;
+    flavourBadge(g, F, left ? x - G.hw(y) - 20 : x + G.hw(y) + 26, y, 15);
+    prevY = y; prevLeft = left;
   });
 }
 
 export function drawTicket(g: Painter, c: Cup, r: Round) {
-  const o = c.order, n = o.layers.length + (o.topping !== null ? 1 : 0), w = Math.max(84, n * 46 + 16), x = c.x - w / 2, y = BELT_Y + 26;
-  g.rr(x, y + 3, w, 40, 12); g.fill('rgba(37,35,58,.18)');
-  g.rr(x, y, w, 40, 12); g.fill(c.judged ? (c.verdict?.ok ? '#E8F5D2' : '#FFE0E7') : '#FFFFFF');
+  const o = c.order, n = o.layers.length + (o.topping !== null ? 1 : 0), w = Math.max(90, n * 50 + 16), x = c.x - w / 2, y = BELT_Y + 24;
+  g.rr(x, y + 3, w, 44, 13); g.fill('rgba(37,35,58,.18)');
+  g.rr(x, y, w, 44, 13); g.fill(c.judged ? (c.verdict?.ok ? '#E8F5D2' : '#FFE0E7') : '#FFFFFF');
   g.fillCircle(c.x, y + 1, 3, '#C9C2B4');
-  let cx = x + 8 + 23;
+  let cx = x + 8 + 25;
   for (const l of o.layers) {
     const F = FL[r.L.flavours[l.tap]];
-    g.fillCircle(cx - 10, y + 20, 11, F.color);
-    glyph(g, F.glyph, cx - 10, y + 20, 6.5, '#fff');
-    g.text(String(Math.round(l.amt)), cx + 11, y + 21, { size: 15, f: 'num', c: INK });
-    cx += 46;
+    flavourBadge(g, F, cx - 10, y + 22, 14);
+    g.text(String(Math.round(l.amt)), cx + 14, y + 23, { size: 16, f: 'num', c: INK });
+    cx += 50;
   }
   if (r.mode === 'spin' && !c.judged) {
-    for (let k = 0; k < r.L.maxLaps; k++) g.fillCircle(c.x - 12 + k * 12, y + 48, 4, k < c.laps ? '#D93D63' : 'rgba(255,255,255,.85)');
+    for (let k = 0; k < r.L.maxLaps; k++) g.fillCircle(c.x - 12 + k * 12, y + 54, 4, k < c.laps ? '#D93D63' : 'rgba(255,255,255,.85)');
   }
   if (o.topping !== null) {
-    g.fillCircle(cx - 4, y + 20, 13, INK);
-    drawToppingIcon(g, o.topping, cx - 4, y + 21, 0.7);
-    if (c.topping !== null) { g.lineWidth = 3; g.circle(cx - 4, y + 20, 15); g.stroke('#6E9F2B'); }
+    g.fillCircle(cx - 4, y + 22, 14, INK);
+    drawToppingIcon(g, o.topping, cx - 4, y + 23, 0.75);
+    if (c.topping !== null) { g.lineWidth = 3; g.circle(cx - 4, y + 22, 16); g.stroke('#6E9F2B'); }
   }
 }
