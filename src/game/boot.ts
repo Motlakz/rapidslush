@@ -1,5 +1,6 @@
-// Startup (plan §1: playing within 30 seconds). Load the save, recover interrupted sessions, then either drop a new
-// player straight into Level 1 with their welcome refill, or show Home.
+// Startup (plan §1: playing within 30 seconds). Load the save and every sound (behind the loading screen, which
+// shows `onProgress`), recover interrupted sessions, then either drop a new player straight into Level 1 with their
+// welcome refill, or show Home.
 import { track } from '@/services/analytics';
 import { checkOta, checkStoreUpdate } from '@/services/appUpdate';
 import { Sound } from '@/services/feedback';
@@ -9,12 +10,13 @@ import { SHOWCASE, newAttract } from './controller';
 import type { Overlay } from './ui-store';
 import { show, toast } from './ui-store';
 
-export async function boot() {
+export async function boot(onProgress?: (f: number) => void) {
   await loadSave();
+  onProgress?.(0.1);
+  await Sound.load(f => onProgress?.(0.1 + 0.9 * f));
   const first = isFirstLaunch();
   const { refunded } = Server.bootstrap();
   newAttract();
-  void Sound.load(); // every effect decoded up front, so the first tap and countdown are on time
   if (SHOWCASE) { // dev capture mode: the game alone, or one named panel over it
     show(SHOWCASE.ui ? ({ name: SHOWCASE.ui } as Overlay) : { name: 'none' });
     return;
