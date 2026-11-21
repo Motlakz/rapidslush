@@ -16,7 +16,7 @@ const PHASES = [
   { sky: ['#241c4f', '#43346e', '#7a68a0'], sea: ['#1c2c4f', '#3a5378'], sun: '#ff5e5e', sunY: 232, glow: 0, sand: '#6e6390', wall: '#4a2b57', palm: '#1f1436', trunk: '#241a2e', stars: 1, moon: 1, bulbs: 1, bglow: 1, win: 1, clouds: 0 },
 ];
 const CAPTIONS = [
-  ['Levels 1–30 · Noon', 'Plastic cups, the day begins', 'Scroll, and watch the sun work'],
+  ['Levels 1–30 · Noon', 'Plastic cups, then clear ones', 'Scroll, and watch the sun work'],
   ['From level 31 · Golden hour', 'Frosted soda glasses arrive', 'The light turns honey'],
   ['From level 61 · Sunset', 'Milkshake glasses, the sun dips', 'The sea goes purple'],
   ['From level 91 · Night', 'String lights after dark', 'The window glows warm'],
@@ -39,13 +39,6 @@ export function ShackScene() {
 
   useGSAP(() => {
     const q = gsap.utils.selector(scope);
-    const setPhase = (i: number) => {
-      const lv = document.getElementById('shack-lv'), nm = document.getElementById('shack-name'), sub = document.getElementById('shack-sub');
-      if (lv) lv.textContent = CAPTIONS[i][0];
-      if (nm) nm.textContent = CAPTIONS[i][1];
-      if (sub) sub.textContent = CAPTIONS[i][2];
-      q('.shack__dots i').forEach((d, k) => d.classList.toggle('on', k === i));
-    };
     const mm = gsap.matchMedia();
     mm.add({ motion: '(prefers-reduced-motion: no-preference)', still: '(prefers-reduced-motion: reduce)' }, ctx => {
       // string lights: bulbs sampled along the wire
@@ -68,14 +61,22 @@ export function ShackScene() {
         }
       }
       if (ctx.conditions?.still) return;
-      let phase = -1;
+      // Smoothness: the page scrolls the window (Lenis drives native scroll), so the pin is the default
+      // position: fixed. A transform pin was applied a frame after the scroll painted, which made the
+      // whole frame shudder. Lenis already smooths the wheel, so the scrub lag stays short. Every
+      // change below is a tween on the one timeline, so nothing switches at a threshold.
       const tl = gsap.timeline({
-        defaults: { ease: 'none', duration: 1 },
-        scrollTrigger: { trigger: scope.current, start: 'top top', end: '+=260%', scrub: .8, pin: true, pinType: 'transform', anticipatePin: 1 },
-        onUpdate: function () {
-          const i = Math.min(3, Math.floor(this.progress() * 4));
-          if (i !== phase) { phase = i; setPhase(i); }
-        },
+        defaults: { ease: 'sine.inOut', duration: 1 },
+        scrollTrigger: { trigger: scope.current, start: 'top top', end: '+=260%', scrub: .4, pin: true },
+      });
+      // the caption crossfades mid-change and the progress bar fills with the scroll
+      const caps = q('.shack__cap');
+      gsap.set(caps, { autoAlpha: (k: number) => (k ? 0 : 1), y: (k: number) => (k ? 12 : 0) });
+      tl.fromTo(q('.shack__bar i'), { scaleX: 0 }, { scaleX: 1, duration: 3.35, ease: 'none' }, 0);
+      caps.forEach((c, k) => {
+        if (!k) return;
+        tl.to(caps[k - 1], { autoAlpha: 0, y: -12, duration: .25, ease: 'power1.in' }, k - 1 + .3)
+          .to(c, { autoAlpha: 1, y: 0, duration: .25, ease: 'power1.out' }, k - 1 + .5);
       });
       PHASES.forEach((p, i) => {
         if (!i) return;
@@ -116,7 +117,7 @@ export function ShackScene() {
           <h2 id="shack-h" style={{ fontSize: 'clamp(2.4rem,5.4vw,4.4rem)' }}>Scroll, and the day goes by</h2>
           <div className="shack__frame">
             <div className="shack__sky" aria-label="The shack's window as the day passes: noon, golden hour, sunset, then night with string lights">
-              <svg viewBox="0 0 1200 640" preserveAspectRatio="xMidYMid slice" role="img">
+              <svg viewBox="0 0 1200 640" preserveAspectRatio="xMidYMax slice" role="img">
                 <defs>
                   <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
                     <stop id="sky0" offset="0" stopColor="#3eb9f6" />
@@ -220,12 +221,16 @@ export function ShackScene() {
               </svg>
             </div>
             <div className="shack__caption">
-              <span id="shack-lv">Levels 1–30 · Noon</span>
-              <b id="shack-name">Plastic cups, the day begins</b>
-              <span style={{ opacity: .75 }} id="shack-sub">Scroll, and watch the sun work</span>
-              <div className="shack__dots" aria-hidden="true">
-                <i className="on" /><i /><i /><i />
-              </div>
+              <ol className="shack__caps">
+                {CAPTIONS.map(([lv, name, sub]) => (
+                  <li className="shack__cap" key={lv}>
+                    <span>{lv}</span>
+                    <b>{name}</b>
+                    <span className="shack__sub">{sub}</span>
+                  </li>
+                ))}
+              </ol>
+              <div className="shack__bar" aria-hidden="true"><i /></div>
             </div>
           </div>
         </div>

@@ -26,7 +26,7 @@
   --hard-lg: .45rem .45rem 0 var(--ink);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; } /* Lenis scrolls; CSS smooth scroll fights ScrollTrigger's measuring */
 body {
   font-family: var(--body); font-weight: 600; color: var(--ink);
   background: var(--cream);
@@ -90,8 +90,7 @@ section { position: relative; padding: clamp(4rem, 9vw, 8.5rem) 0; }
 .play-btn__text small { font-family: var(--body); font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .8; }
 
 /* ---------- reveal (GSAP adds .in; gsap-off and noscript are the fallbacks) ---------- */
-.io { opacity: 0; }
-.gsap-off .io, .io.in { opacity: 1; }
+.enter .hero__copy > * { opacity: 0; } /* held for the entrance; layout.tsx + CandyMotion */
 
 /* gloss sweep across stickers */
 .pol::after, .card::after {
@@ -147,24 +146,37 @@ section { position: relative; padding: clamp(4rem, 9vw, 8.5rem) 0; }
   .nav__m { display: block; }
 }
 
-/* ---------- hero ---------- */
-.hero { overflow: clip; padding-top: clamp(3rem, 6vw, 5.5rem); }
-.hero__grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 2rem; align-items: center; }
-.hero__kicker-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.2rem; }
-.hero h1 { font-size: clamp(3.4rem, 8.4vw, 7.2rem); }
-.hero h1 .stroke { color: var(--berry); text-shadow: .06em .06em 0 var(--ink); }
-.hero h1 .fz { display: inline-block; color: var(--razz); }
-.hero__lead { font-size: clamp(1.1rem, 1.6vw, 1.35rem); line-height: 1.55; max-width: 34rem; margin: 1.4rem 0 1.8rem; }
+/* ---------- hero: the name, the pitch, a real round in a phone ---------- */
+.hero { overflow: clip; padding-top: clamp(3rem, 6vw, 5rem); }
+.hero__grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: clamp(2rem, 4vw, 3.5rem); align-items: center; }
+.hero__kicker-row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.3rem; }
+.hero h1 { font-size: clamp(3.4rem, 7.4vw, 6.4rem); color: var(--berry); text-shadow: .05em .05em 0 var(--ink); }
+.hero__h1-sub { display: block; margin-top: .5rem; font-size: clamp(1.5rem, 2.6vw, 2.2rem); color: var(--ink); text-shadow: none; }
+.hero__lead { font-size: clamp(1.1rem, 1.5vw, 1.3rem); line-height: 1.55; max-width: 34rem; margin: 1.3rem 0 1.8rem; }
 .hero__cta { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
-.hero__note { font-size: .95rem; opacity: .85; margin-top: 1rem; }
-.hero__art { position: relative; display: grid; place-items: center; perspective: 1100px; }
-.hero__cup { width: min(60vw, 21rem); will-change: transform; margin-top: 1rem; }
+.hero__note { font-size: .98rem; margin-top: 1.1rem; color: var(--muted); max-width: 34rem; }
+.hero__art { position: relative; padding: 2.4rem 0; }
+/* a landscape phone: plum bezel, sticker shadow, the screenshot edge to edge */
+.device {
+  position: relative; z-index: 1; background: var(--ink); border: .18rem solid var(--ink);
+  border-radius: clamp(1.4rem, 2.4vw, 2.2rem); padding: clamp(.55rem, 1vw, .85rem) clamp(.9rem, 1.8vw, 1.5rem);
+  box-shadow: var(--hard-lg);
+}
+.device img { width: 100%; height: auto; aspect-ratio: 1600 / 760; object-fit: cover; border-radius: clamp(.7rem, 1.2vw, 1rem); }
+.device__sticker {
+  position: absolute; right: -.6rem; bottom: -1.2rem; font-family: var(--disp); font-size: clamp(1.2rem, 2vw, 1.7rem);
+  background: var(--mango); color: var(--ink); border: .18rem solid var(--ink); border-radius: 999px;
+  padding: .4rem 1.2rem .55rem; box-shadow: var(--hard); transform: rotate(-6deg);
+}
 .blob { position: absolute; border-radius: 50%; border: .16rem solid var(--ink); }
-.blob--razz { width: 7rem; height: 7rem; background: var(--razz); top: 4%; left: 2%; }
-.blob--lime { width: 4.4rem; height: 4.4rem; background: var(--lime); bottom: 12%; left: 8%; }
-.blob--mango { width: 5.6rem; height: 5.6rem; background: var(--mango); top: 10%; right: 4%; }
-.blob--grape { width: 3.6rem; height: 3.6rem; background: var(--grape); bottom: 4%; right: 12%; }
-@media (max-width: 860px) { .hero__grid { grid-template-columns: 1fr; } .hero__art { order: -1; } .hero__cup { width: min(52vw, 15rem); } }
+.blob--razz { width: 7rem; height: 7rem; background: var(--razz); top: 0; left: -1.5rem; }
+.blob--mango { width: 5rem; height: 5rem; background: var(--mango); top: .4rem; right: 8%; }
+.blob--lime { width: 4.4rem; height: 4.4rem; background: var(--lime); bottom: .2rem; left: 12%; }
+@media (max-width: 960px) {
+  .hero__grid { grid-template-columns: 1fr; }
+  .hero__art { padding: 1.6rem .4rem 2rem; }
+}
+@media (max-width: 520px) { .hero__cta .btn { width: 100%; justify-content: center; } }
 
 /* ---------- flavour ticker ---------- */
 .ticker {
@@ -188,26 +200,27 @@ section { position: relative; padding: clamp(4rem, 9vw, 8.5rem) 0; }
 .stat:nth-child(4) b { color: var(--lime-deep); }
 @media (max-width: 760px) { .stats__row { grid-template-columns: repeat(2, 1fr); row-gap: 2rem; } }
 
-/* ---------- machines: two polaroid stickers ---------- */
-.machines__grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; margin-top: 2.6rem; }
+/* ---------- machines: two sticker cards, words above the screenshot ---------- */
+.machines__grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2.6rem; }
 .pol {
-  position: relative; background: var(--paper); border: .18rem solid var(--ink); border-radius: 1.6rem;
-  padding: 1rem 1rem 1.3rem; box-shadow: var(--hard-lg); overflow: hidden;
-  transition: box-shadow .3s;
+  position: relative; display: flex; flex-direction: column; background: var(--paper); border: .18rem solid var(--ink);
+  border-radius: 1.6rem; padding: 1.6rem 1.6rem 1.2rem; box-shadow: var(--hard-lg); overflow: hidden;
+  transition: transform .2s, box-shadow .2s;
 }
-.pol img { border-radius: 1rem; border: .14rem solid var(--ink); aspect-ratio: 16 / 10; object-fit: cover; width: 100%; }
-.pol--tall img { aspect-ratio: 4 / 4.4; }
+.pol:hover { transform: translate(-2px, -2px); box-shadow: calc(.45rem + 2px) calc(.45rem + 2px) 0 var(--ink); }
+.pol > p { flex: 1; }
+.pol h3 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); }
+.pol p { margin-top: .5rem; line-height: 1.55; max-width: 34rem; }
+.pol__shot { position: relative; margin-top: 1.3rem; border: .14rem solid var(--ink); border-radius: 1rem; overflow: hidden; }
+.pol__shot img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .5s cubic-bezier(.2, .8, .2, 1); }
+.pol:hover .pol__shot img { transform: scale(1.025); }
 .pol__tag {
-  position: absolute; z-index: 1; font-family: var(--disp); font-size: 1.2rem; color: #fff;
-  background: var(--razz); border: .16rem solid var(--ink); border-radius: 999px; padding: .4rem 1.1rem .5rem;
-  box-shadow: .2rem .2rem 0 var(--ink); transform: rotate(-3deg);
+  position: absolute; z-index: 1; top: .8rem; left: .8rem; font-family: var(--disp); font-size: 1.15rem; color: #fff;
+  background: var(--razz); border: .16rem solid var(--ink); border-radius: 999px; padding: .35rem 1rem .45rem;
+  box-shadow: .2rem .2rem 0 var(--ink);
 }
-.pol--tall .pol__tag { background: var(--grape); transform: rotate(2.5deg); }
-.pol h3 { font-size: clamp(1.7rem, 2.6vw, 2.3rem); margin-top: 1rem; }
-.pol p { margin-top: .4rem; line-height: 1.55; }
-.pol--wide { grid-column: span 7; }
-.pol--tall { grid-column: span 5; }
-@media (max-width: 860px) { .pol--wide, .pol--tall { grid-column: 1 / -1; } }
+.pol__tag--grape { background: var(--grape); }
+@media (max-width: 860px) { .machines__grid { grid-template-columns: 1fr; } }
 
 /* ---------- the rush: bento of candy cards ---------- */
 .rush__grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1.6rem; margin-top: 2.6rem; }
@@ -251,13 +264,31 @@ section { position: relative; padding: clamp(4rem, 9vw, 8.5rem) 0; }
 .shack__sky { position: relative; aspect-ratio: 16 / 7.6; }
 .shack__sky svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .shack__caption {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem;
+  display: flex; align-items: center; gap: 1.2rem;
   border-top: .18rem solid var(--ink); background: var(--paper); padding: 1.1rem 1.6rem; font-size: 1.05rem;
 }
-.shack__caption b { font-family: var(--disp); font-weight: 400; font-size: 1.5rem; }
-.shack__dots { display: flex; gap: .5rem; margin-left: auto; align-items: center; }
-.shack__dots i { width: .8rem; height: .8rem; border-radius: 50%; border: .12rem solid var(--ink); background: var(--paper); transition: background .3s; }
-.shack__dots i.on { background: var(--berry); }
+/* all four captions share one cell and crossfade with the scroll */
+.shack__caps { list-style: none; display: grid; flex: 1; }
+.shack__cap { grid-area: 1 / 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem 1rem; }
+.shack__cap + .shack__cap { opacity: 0; }
+.shack__cap b { font-family: var(--disp); font-weight: 400; font-size: 1.5rem; }
+.shack__sub { opacity: .75; }
+.shack__bar { flex: none; width: 7rem; height: .7rem; border-radius: 99px; border: .12rem solid var(--ink); overflow: hidden; }
+.shack__bar i { display: block; height: 100%; background: var(--berry); transform: scaleX(0); transform-origin: left; }
+/* the pinned scene fits one screen: the sky takes what the heading and caption leave */
+.shack__pin { height: 100svh; min-height: 0; padding-block: 6.75rem 2rem; }
+.shack__pin > .wrap { display: flex; flex-direction: column; height: 100%; }
+.shack__frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.shack__sky { flex: 1; min-height: 0; aspect-ratio: auto; }
+@media (max-width: 760px) {
+  .shack__pin { padding-block: 6.5rem 1.5rem; }
+  .shack__pin > .wrap { justify-content: center; }
+  .shack__frame { flex: none; margin-top: 1.4rem; }
+  .shack__sky { flex: none; aspect-ratio: 1 / 1; max-height: 46svh; }
+  .shack__caption { flex-direction: column; align-items: stretch; gap: .8rem; padding: 1rem 1.2rem; }
+  .shack__cap b { font-size: 1.3rem; }
+  .shack__bar { width: 100%; }
+}
 
 /* ---------- FAQ ---------- */
 .faq__grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2rem; margin-top: 2.4rem; }
@@ -317,6 +348,7 @@ main > section.section--doc { padding-block: clamp(3rem, 6vw, 5rem) 5rem; }
 @media (prefers-reduced-motion: reduce) {
   .ticker__track { animation: none; }
   .btn::after, .pol::after, .card::after { display: none; }
+  .pol, .pol__shot img { transition: none; }
   html { scroll-behavior: auto; }
 }
 /* lenis smooth scroll */

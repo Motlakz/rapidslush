@@ -1,24 +1,24 @@
 import type { Metadata } from 'next';
 
 import { DocPage, Part } from '@/components/DocPage';
-import { site } from '@/lib/site';
+import { analytics, site } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Delete your data',
-  description: 'How to delete everything Rapid Slush keeps: reset it in the game or uninstall the app.',
+  description: 'How to delete everything Rapid Slush keeps on your phone, and what happens to its anonymous statistics.',
 };
 
 export default function DeleteData() {
   return (
-    <DocPage title="Delete your data" lead="Everything Rapid Slush keeps is on your phone, so you can delete it yourself in under a minute.">
+    <DocPage title="Delete your data" lead="Everything Rapid Slush keeps about your game is on your phone, so you can delete it yourself in under a minute.">
       <Part id="in-game" title="Delete it in the game">
         <ol>
           <li>Open Rapid Slush and tap the settings button at the top right of the home screen.</li>
           <li>Tap Reset progress, then tap it again to confirm.</li>
         </ol>
         <p>
-          This erases your progress, token and coin balances, their history, your unlocked cups and skins, and your settings on that phone,
-          including any bought tokens. It cannot be undone.
+          This erases your progress, lives, coins and their history, your unlocked cups and skins, and your settings on that phone. It also
+          gives the app a new anonymous analytics ID, so nothing from then on links to your earlier play. It cannot be undone.
         </p>
       </Part>
 
@@ -26,11 +26,21 @@ export default function DeleteData() {
         <p>Uninstalling Rapid Slush deletes everything it stored on your phone.</p>
       </Part>
 
-      <Part id="servers" title="Data on our servers">
+      <Part id="statistics" title="Anonymous statistics">
         <p>
-          The current version stores nothing on our servers, so there is nothing for us to delete. When the game starts keeping anything online,
-          this page will explain how to ask us to delete it and list anything the law requires us to keep, such as purchase records.
+          The usage statistics and crash reports the app sends to {analytics.provider} carry only a random ID, never your name, email or an
+          account, so we cannot pick out which ones are yours. We use them only to improve the game and delete them when they are no longer
+          needed for that.
         </p>
+        <p>
+          Resetting your progress or uninstalling the app removes the ID from your phone, and after that the statistics already sent can no
+          longer be connected to it. For any question about them, write to the developer email on our{' '}
+          <a className="link" href={site.playUrl} rel="noopener">Google Play page</a>.
+        </p>
+      </Part>
+
+      <Part id="servers" title="Other data on our servers">
+        <p>The game keeps no accounts and no saved games on our servers, so there is nothing else for us to delete.</p>
       </Part>
     </DocPage>
   );

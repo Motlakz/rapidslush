@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 
 import { DocPage, Part } from '@/components/DocPage';
-import { economy, site } from '@/lib/site';
+import { lives, site } from '@/lib/site';
 
 export const metadata: Metadata = {
   title: 'Terms of use',
-  description: 'The rules for playing Rapid Slush: tokens, coins, purchases, fair play and what happens to your progress.',
+  description: 'The rules for playing Rapid Slush: lives, coins, fair play and what happens to your progress.',
 };
 
 export default function Terms() {
@@ -20,32 +20,25 @@ export default function Terms() {
 
       <Part id="game" title="The game">
         <p>
-          Rapid Slush is free to play. Test versions are still being built: levels, prices and balances may change, and a test version may have
-          bugs. The game is provided as it is.
+          Rapid Slush is free, and nothing in it is for sale. The game is still being built: levels, rewards and balances may change, and a
+          version may have bugs. The game is provided as it is.
         </p>
       </Part>
 
-      <Part id="tokens" title="Tokens and coins">
+      <Part id="lives" title="Lives and coins">
         <ul>
-          <li>Tokens and coins are items inside the game. They have no cash value and cannot be sold, transferred or exchanged for money.</li>
-          <li>A round costs {economy.roundCost} tokens, taken when the round starts. Leaving a round partway still uses them.</li>
-          <li>If the app closes before a round has run five seconds, its tokens are returned the next time you open the game.</li>
-          <li>Free tokens refill once a day, up to a balance of {economy.freeCap}. Rounds use free tokens before bought ones.</li>
-          <li>Bought tokens never expire.</li>
-          <li>Coins are earned by playing and unlock cups and machine skins. They change how the game looks, never how it plays.</li>
+          <li>You hold up to {lives.max} lives. Winning a level costs nothing, and replaying a level you have already beaten is always free.</li>
+          <li>A level you have not beaten yet takes a life when it starts and gives it back if you win. Quitting or closing the app during that round still uses it.</li>
+          <li>If the app closes in the first five seconds of a round, its life is returned the next time you open the game.</li>
+          <li>One life comes back every {lives.refillMinutes} minutes. Setting your phone&rsquo;s clock back restarts that wait.</li>
+          <li>Coins are earned by playing. They refill every life at once for {lives.refillCoins} coins and unlock cups and machine skins, which change how the game looks, never how it plays.</li>
+          <li>Lives and coins are items inside the game. They have no cash value and cannot be bought, sold, transferred or exchanged for money.</li>
         </ul>
-      </Part>
-
-      <Part id="purchases" title="Purchases">
-        <p>
-          Token packs are bought through your app store, which shows the price before you pay and whose own terms also apply. Refunds are covered
-          on the <a className="link" href="/purchases/">Purchases and refunds</a> page.
-        </p>
       </Part>
 
       <Part id="fair-play" title="Fair play">
         <p>
-          Do not cheat, modify the app, use automated play or exploit bugs for tokens, coins or scores. We may remove what was gained that way.
+          Do not cheat, modify the app, use automated play or exploit bugs for lives, coins or scores. We may remove what was gained that way.
         </p>
       </Part>
 
@@ -55,8 +48,8 @@ export default function Terms() {
 
       <Part id="changes" title="Changes and ending the game">
         <p>
-          We may change the game and these terms. Changes that matter are announced in the app or on this website before they apply. If we ever
-          stop running the game, we will say beforehand how unused bought tokens are handled.
+          We may change the game and these terms. Changes that matter are announced in the app or on this website before they apply. If we
+          ever add anything for sale, these terms will cover it before it reaches you.
         </p>
       </Part>
 

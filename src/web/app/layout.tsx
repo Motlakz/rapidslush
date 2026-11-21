@@ -11,7 +11,7 @@ const num = Lexend_Deca({ weight: ['400', '500'], subsets: ['latin'], variable: 
 export const metadata: Metadata = {
   title: { default: `${site.name}: a slushy arcade game for Android`, template: `%s | ${site.name}` },
   description:
-    'Rapid Slush is a free-to-play arcade game: hold a tap, let go on the line and serve the order before the belt moves. 130 levels on two machines.',
+    'Rapid Slush is a free arcade game with nothing to buy: hold a tap, let go on the line and serve the order before the belt moves. 130 levels on two machines.',
   icons: { icon: '/favicon.svg', apple: '/apple-touch-icon.png' },
   openGraph: { type: 'website', siteName: site.name, images: [{ url: '/share.jpg', width: 1200, height: 630 }] },
   twitter: { card: 'summary_large_image' },
@@ -25,10 +25,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${text.variable} ${num.variable}`}>
       <head>
         <link rel="stylesheet" href="/site.css" />
-        <noscript>
-          {/* without JS there is no loader and no scroll motion: show everything */}
-          <style>{`.loader { display: none !important; } .io { opacity: 1 !important; }`}</style>
-        </noscript>
+        {/* Hold the hero's words and picture back from the first paint so its entrance never flashes.
+            CandyMotion lifts this; the timeout shows everything if the script never runs. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "if(!matchMedia('(prefers-reduced-motion: reduce)').matches){var d=document.documentElement;d.classList.add('enter');setTimeout(function(){d.classList.remove('enter')},2500)}",
+          }}
+        />
       </head>
       <body suppressHydrationWarning>{children}</body>
     </html>

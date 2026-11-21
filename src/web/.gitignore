@@ -10,6 +10,6 @@ next-env.d.ts
 .taste-skill/
 shots/
 # raw full-size game captures (the optimised frames in public/img are what ships)
-img/
+/img/
 
 .vercel

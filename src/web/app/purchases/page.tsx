@@ -1,53 +1,37 @@
 import type { Metadata } from 'next';
 
 import { DocPage, Part } from '@/components/DocPage';
-import { economy, site } from '@/lib/site';
+import { lives, site } from '@/lib/site';
 
+// The game sells nothing since lives replaced tokens (2026-11-20). The page keeps its address so older links
+// (store listing, earlier policy versions) still land somewhere that answers the question.
 export const metadata: Metadata = {
-  title: 'Purchases and refunds',
-  description: 'Rapid Slush token packs, what each holds, how tokens are added and how to ask for a refund.',
+  title: 'Purchases',
+  description: 'Rapid Slush sells nothing: there are no in-app purchases, and lives and coins are earned by playing.',
 };
 
 export default function Purchases() {
   return (
-    <DocPage title="Purchases and refunds" lead="Token packs are optional. Here is what each holds, how they are added and how refunds work.">
-      <Part id="status" title="During the test">
-        <p>In the current test version the token shop is a demonstration: tapping a pack adds test tokens and nothing is charged.</p>
-      </Part>
-
-      <Part id="packs" title="Token packs">
-        <table>
-          <thead><tr><th scope="col">Pack</th><th scope="col">Tokens</th><th scope="col">Price</th></tr></thead>
-          <tbody>
-            {economy.packs.map(p => (
-              <tr key={p.name}><td>{p.name}</td><td className="num">{p.tokens}</td><td className="num">{p.price}</td></tr>
-            ))}
-          </tbody>
-        </table>
-        <p>Prices are in US dollars. Your app store shows the price in your currency, with any tax, before you pay.</p>
-        <p>Your first purchase adds {economy.firstPurchaseBonus} bonus tokens, once.</p>
-      </Part>
-
-      <Part id="added" title="How tokens are added">
-        <ul>
-          <li>Tokens are added only after the store confirms the payment, and each purchase is added once.</li>
-          <li>A payment the store is still processing shows as pending until it completes.</li>
-          <li>Bought tokens never expire and are used after your free tokens.</li>
-        </ul>
-      </Part>
-
-      <Part id="refunds" title="Refunds">
+    <DocPage title="Purchases" lead="Rapid Slush has no in-app purchases. Everything in the game is earned by playing.">
+      <Part id="nothing" title="Nothing is for sale">
         <p>
-          For a purchase made through Google Play, ask for a refund in Google Play&rsquo;s order history within 48 hours. After that, write to the developer email on our <a className="link" href={site.playUrl} rel="noopener">Google Play page</a> with
-          the order number (it starts with GPA) and we will look at it.
+          There are no token packs, coin packs or paid extras. Lives come back on their own, one every {lives.refillMinutes} minutes, and the
+          coins that refill them or unlock cups and machine skins are earned on shift: {lives.milestoneCoins} for the first clear of every fifth
+          level, and {lives.challengeCoins} plus a life for the daily challenge.
         </p>
-        <p>When a purchase is refunded, the tokens it added are removed from your bought tokens.</p>
       </Part>
 
-      <Part id="problems" title="Missing tokens">
+      <Part id="earlier" title="Earlier test versions">
         <p>
-          If a pack was charged but its tokens did not arrive, close and reopen the game. If they are still missing, write to the developer email on our <a className="link" href={site.playUrl} rel="noopener">Google Play page</a> with the order number
-          and the player number from the bottom of the Wallet screen.
+          Early test versions had a token shop as a demonstration. It never charged anyone, and it was removed when lives replaced tokens.
+        </p>
+      </Part>
+
+      <Part id="charged" title="If you were charged">
+        <p>
+          Rapid Slush never takes payments, so a charge that names it is a mistake or another app. Check the order in Google Play&rsquo;s order
+          history, and write to the developer email on our <a className="link" href={site.playUrl} rel="noopener">Google Play page</a> with what
+          you see. We will help you sort it out.
         </p>
       </Part>
     </DocPage>
