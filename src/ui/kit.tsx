@@ -83,10 +83,11 @@ const TAGS: Record<TagTone, [string, string]> = {
   default: [C.cream2, C.ink2], berry: ['#FFE0E7', '#B42A50'], lime: ['#E8F5D2', '#4A6E17'],
   mango: ['#FFF0CC', '#8A5A00'], grape: ['#ECE5FF', '#5636B8'], razz: ['#DDF4FD', '#0F6A91'],
 };
-export function Tag({ tone = 'default', children, icon }: { tone?: TagTone; children: ReactNode; icon?: ReactNode }) {
+/** A label chip. It hugs the start of its row by default; pass `style={{ alignSelf: 'center' }}` inside a centred card. */
+export function Tag({ tone = 'default', children, icon, style }: { tone?: TagTone; children: ReactNode; icon?: ReactNode; style?: StyleProp<ViewStyle> }) {
   const [bg, fg] = TAGS[tone];
   return (
-    <View style={[s.tag, { backgroundColor: bg, paddingVertical: 7, paddingHorizontal: 15 }]}>
+    <View style={[s.tag, { backgroundColor: bg, paddingVertical: 7, paddingHorizontal: 15 }, style]}>
       {icon}
       <Text style={[s.tagText, { color: fg }]}>{children}</Text>
     </View>

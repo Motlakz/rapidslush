@@ -20,6 +20,13 @@ export const MARK = {
   ],
   straw: 'M262 150 L338 34',
   strawStripes: 'M276 128 L300 92 M312 73 L330 46',
+  /**
+   * The loading screen's fuller straw: longer and half again as wide (ink 50, body 34), with four candy bands.
+   * It sits on the hero-sized cup; the launcher icon keeps the slimmer straw above. The cup crossfades in over the
+   * icon tile, so the two never have to line up.
+   */
+  strawFull: 'M252 170 L340 24',
+  strawFullStripes: 'M257.5 160.9 L268.5 142.6 M279.5 124.4 L290.5 106.1 M301.5 87.9 L312.5 69.6 M323.5 51.4 L334.5 33.1',
   dome: 'M146 196 C140 136 196 104 236 118 C256 92 306 96 322 128 C362 128 380 170 366 196 Z',
   domeInner: 'M152 196 C152 162 186 146 214 152 C232 132 276 136 290 158 C320 152 352 170 360 196 Z',
   domeShine: ['M188 140 C202 124 222 122 236 130', 'M296 136 C312 136 328 144 334 156'],

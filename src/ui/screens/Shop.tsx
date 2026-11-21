@@ -106,7 +106,7 @@ export function Collection() {
               <View key={it.id} style={[ss.item, { width: collTab === 'cups' ? 199 : 270 }, on && ss.itemEq]}>
                 {collTab === 'cups' ? <CupPreview d={it as CupDesign} /> : <SkinPreview s={it as Skin} />}
                 <B>{it.name}</B>
-                {on ? <Tag tone="lime">Equipped</Tag>
+                {on ? <Tag tone="lime" style={{ alignSelf: 'center' }}>Equipped</Tag>
                   : has ? <Btn size="sm" onPress={() => { Server.equip(collTab, it.id); Sound.sfx('tap'); }}>Equip</Btn>
                     : (
                       <Btn size="sm" tone="mango" disabled={S.wallet.coins < it.price} label={`Unlock ${it.name} for ${it.price} coins`}

@@ -38,8 +38,10 @@ export function Home() {
       </Row>
 
       {/* Side-by-side columns that scroll vertically when the screen is shorter than the cards (phones at the 16pt
-          floor). flexGrow keeps the row at full height when everything fits, so the right column still sits bottom. */}
-      <ScrollView pointerEvents="box-none" style={{ flex: 1 }}
+          floor). flexGrow keeps the row at full height when everything fits, so the right column still sits bottom.
+          No pointerEvents="box-none" here: on Android a scroll view that can't be the touch target never scrolls, and
+          the attract round behind takes no input anyway. */}
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexDirection: 'row', flexGrow: 1, gap: 22, paddingTop: 104 + safe.top, paddingBottom: 34 + safe.bottom, paddingLeft: 40 + safe.left, paddingRight: 40 + safe.right }}>
         <Card style={{ flex: 1, maxWidth: 500, gap: 16, padding: 28, alignSelf: 'flex-start' }}>
           <Row style={{ gap: 8, flexWrap: 'wrap' }}><Tag tone="mango">Beach Shack</Tag><Tag>{`${mach.name} · Level ${n} of ${maxFor(m)}`}</Tag></Row>

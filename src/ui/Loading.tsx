@@ -172,9 +172,9 @@ export function Loading({ progress, onReady, onDone }: { progress: number; onRea
         <Svg width={SPLASH_DP} height={SPLASH_DP} viewBox="0 0 512 512">
           <Defs><ClipPath id="ldCup"><Path d={M.cup} /></ClipPath></Defs>
           <G transform={splashTransform}>
-            <Path d={M.straw} stroke={B.ink} strokeWidth={34} strokeLinecap="round" />
-            <Path d={M.straw} stroke={B.berry} strokeWidth={20} strokeLinecap="round" />
-            <Path d={M.strawStripes} stroke={B.cream} strokeWidth={20} />
+            <Path d={M.strawFull} stroke={B.ink} strokeWidth={50} strokeLinecap="round" />
+            <Path d={M.strawFull} stroke={B.berry} strokeWidth={34} strokeLinecap="round" />
+            <Path d={M.strawFullStripes} stroke={B.cream} strokeWidth={34} />
             <Path d={M.cup} fill={B.ink} stroke={B.ink} strokeWidth={24} strokeLinejoin="round" />
             <G clipPath="url(#ldCup)">
               {M.layers.map(l => <Path key={l.fill} d={l.d} fill={l.fill} />)}
