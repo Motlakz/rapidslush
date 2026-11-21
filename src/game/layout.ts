@@ -17,6 +17,24 @@ export function spinBtn(i: number, k: number): Box {
   return { x: 40 + (960 - tot) / 2 + i * (w + 12), y: 618, w, h: 82 };
 }
 
+export type BlendKind = 'scoop' | 'blend' | 'pour' | 'top' | 'serve';
+/**
+ * Blend Station deck, left to right: the flavour scoops, then BLEND and POUR (held), TOPPING when the level has one, and
+ * SERVE on the right edge where SEND sits on the Slush Line. Scoops are a little narrower than the action buttons.
+ */
+export function blendDeck(L: { taps: number; topping: number | null }): { kind: BlendKind; i: number; box: Box }[] {
+  const acts: BlendKind[] = ['blend', 'pour', ...(L.topping !== null ? (['top'] as const) : []), 'serve'];
+  const gap = 12, span = 1200, k = L.taps, a = acts.length;
+  // actions get 1.25 shares, scoops 1 share each
+  const unit = (span - (k + a - 1) * gap) / (k + a * 1.25), sw = Math.min(170, unit), aw = Math.min(200, unit * 1.25);
+  const total = k * sw + a * aw + (k + a - 1) * gap;
+  let x = 40 + (span - total) / 2;
+  const out: { kind: BlendKind; i: number; box: Box }[] = [];
+  for (let i = 0; i < k; i++) { out.push({ kind: 'scoop', i, box: { x, y: 618, w: sw, h: 82 } }); x += sw + gap; }
+  for (const kind of acts) { out.push({ kind, i: 0, box: { x, y: 618, w: aw, h: 82 } }); x += aw + gap; }
+  return out;
+}
+
 /** Generous hit test: a little slop below the button for thumbs. */
 export const inBox = (p: { x: number; y: number }, b: Box) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y - 6 && p.y <= b.y + b.h + 12;
 
@@ -51,7 +69,17 @@ export interface StageLayout {
   playable: boolean; portrait: boolean;
   /** share of the window the stage covers */
   fill: number;
+  /**
+   * Readability on small screens: the HUD row, the control deck and the order tickets scale up as groups so their
+   * text stays legible when the stage itself is shrunk (a phone lands near 0.54). 1 on tablets and desktop.
+   */
+  hudK: number; deckK: number; ticketK: number;
+  /** where control space (the deck's original 0..1280 × 0..720 design) sits on the stage, at deckK */
+  deckX: number; deckY: number;
 }
+
+/** Stage scale below which the HUD, deck and tickets get the readability boost, and the effective scale they aim for. */
+const BOOST_AIM = 0.8;
 
 /**
  * Shape the stage to the screen (Apple's iPhone Duo HIG: prefer changing the aspect ratio over letterboxing).
@@ -67,11 +95,18 @@ export function layoutStage(width: number, height: number, ins: Insets = { top: 
   const safe = { top: ins.top / scale, right: ins.right / scale, bottom: ins.bottom / scale, left: ins.left / scale };
   const extra = SH - WORLD_H, oy = Math.round(extra * 0.6), below = extra - oy; // the shack front gets more room than the deck
   const usableW = (winW - ins.left - ins.right) / scale;
+  const ctrlY = Math.min(oy + Math.min(below, CTRL_DRIFT), SH - safe.bottom - 712);
+  const want = BOOST_AIM / scale;
+  // the deck may only grow as far as the safe width allows (its buttons span 1200 units); its bottom edge stays put
+  const deckK = Math.max(1, Math.min(want, 1.3, (usableW - 40) / 1200));
+  const ox = (SW - WORLD_W) / 2;
   return {
+    hudK: Math.max(1, Math.min(want, 1.3)), deckK, ticketK: Math.max(1, Math.min(want * 0.95, 1.35)),
+    deckX: ox + 640 * (1 - deckK), deckY: ctrlY + 708 * (1 - deckK),
     SW, SH, ox: (SW - WORLD_W) / 2, oy,
     hudY: Math.max(oy - Math.min(oy, HUD_DRIFT), safe.top),
     // the deck drifts down on tall stages, but its buttons (618..708 + shadow) never reach the home indicator
-    ctrlY: Math.min(oy + Math.min(below, CTRL_DRIFT), SH - safe.bottom - 712),
+    ctrlY,
     safe, scale, width: w, height: h, left: (winW - w) / 2, top: (winH - h) / 2,
     // playable needs the scale and enough safe width for the HUD's three groups
     playable: scale >= MIN_PLAYABLE_SCALE && usableW >= 1180,

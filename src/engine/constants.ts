@@ -53,4 +53,6 @@ export const CFG = {
   },
   spill: { grace: 1.5, trayGrace: 4, minor: 6, moderate: 16 },
   flow: { base: 18, max: 85, decay: 9, ramp: 10 },
+  /** Blend Station blade: spin-up rate while BLEND is held, coast-down rate after (so it drifts ~speed/decay further) */
+  blend: { ramp: 6, decay: 4 },
 } as const;

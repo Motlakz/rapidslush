@@ -71,7 +71,7 @@ export function drawMachine(g: Painter, r: Round, t: number, ctx: RenderCtx) {
   }
 }
 
-function drawShaker(g: Painter, r: Round, x: number, y: number) {
+export function drawShaker(g: Painter, r: Round, x: number, y: number) {
   const V = viewOf(r), dt = r.clock - V.shakeT, shake = dt >= 0 && dt < 0.3 ? Math.sin(dt * 60) * 4 : 0;
   g.save(); g.translate(x + shake, y);
   g.rr(-16, -14, 32, 40, 10); g.fill(CREAM); g.lineWidth = 2; g.stroke(INK);

@@ -1,4 +1,4 @@
-// The Beach Shack backdrop. Static, so it is recorded once per time-of-day into an SkPicture and replayed each frame.
+// The shack backdrop (any theme, src/game/shacks.ts). Static, so it is recorded once per time-of-day into an SkPicture and replayed each frame.
 // The shack's day moves with progress: day (1–30) → golden hour (31–60) → sunset (61–90) → night with string lights (91+).
 import { FilterMode, Skia, TileMode, type SkPicture, type SkShader } from '@shopify/react-native-skia';
 
@@ -7,19 +7,19 @@ import type { StageLayout } from '@/game/layout';
 import { glassGeom, glassPath, roundGlass } from './glass';
 import { Painter, hexA } from './painter';
 import { flavourIcon } from './icons';
-import { CREAM, INK } from './shapes';
+import { SHACKS, shackById, type ShackTheme } from '@/game/shacks';
+import { INK } from './shapes';
 
-interface Sky {
-  sky: [string, string, string]; sea: [string, string];
-  sun: { x: number; y: number; r: number; c: string; glow: string; moon?: boolean };
-  sand: string; wall: string; wallLine: string; tint: string | null; cloud: string; foliage: string; trunk: string; island: string;
+/** The shack theme being drawn; every cached picture belongs to it. */
+let THEME: ShackTheme = SHACKS[0];
+/** Switch theme (Collection equip, showcase): drops the cached backdrops so they re-record in the new colours. */
+export function setShackTheme(id: string | undefined) {
+  const next = shackById(id);
+  if (next === THEME) return;
+  THEME = next;
+  invalidateBackgrounds();
 }
-const SKIES: Sky[] = [
-  { sky: ['#2FB1F0', '#86D9FB', '#FFF0CC'], sea: ['#0B93CC', '#48CDE6'], sun: { x: 1090, y: 132, r: 50, c: '#FFE36E', glow: 'rgba(255,228,120,.38)' }, sand: '#F9D9A0', wall: '#F6BC7C', wallLine: 'rgba(160,90,40,.28)', tint: null, cloud: 'rgba(255,255,255,.92)', foliage: '#2E9E55', trunk: '#8A5A3B', island: '#3C8E62' },
-  { sky: ['#3D9BE0', '#FFC27A', '#FFE3A6'], sea: ['#2A86BE', '#F2BE7E'], sun: { x: 1092, y: 192, r: 56, c: '#FFB347', glow: 'rgba(255,170,70,.42)' }, sand: '#F6CB8A', wall: '#F4B06C', wallLine: 'rgba(150,80,30,.3)', tint: 'rgba(255,160,60,.08)', cloud: 'rgba(255,236,210,.9)', foliage: '#3C8A47', trunk: '#7A4B2E', island: '#4A7A52' },
-  { sky: ['#5B3F9A', '#F05E8A', '#FFAF64'], sea: ['#4A3C8E', '#E9747A'], sun: { x: 1092, y: 232, r: 62, c: '#FF7A45', glow: 'rgba(255,110,80,.45)' }, sand: '#E9B07E', wall: '#E89E6C', wallLine: 'rgba(120,50,40,.3)', tint: 'rgba(190,70,120,.12)', cloud: 'rgba(255,190,200,.85)', foliage: '#2F5E46', trunk: '#5E3A2A', island: '#3A3F6A' },
-  { sky: ['#0E1433', '#232A66', '#4E3F86'], sea: ['#0C1636', '#283A7A'], sun: { x: 1090, y: 118, r: 40, c: '#F3EFCF', glow: 'rgba(240,235,200,.22)', moon: true }, sand: '#6E5A7E', wall: '#D29A7E', wallLine: 'rgba(40,20,40,.32)', tint: 'rgba(22,24,72,.2)', cloud: 'rgba(120,130,190,.55)', foliage: '#1C3A3A', trunk: '#3A2A2E', island: '#141C3E' },
-];
+const sky = (phase: number) => THEME.skies[phase];
 export const phaseFor = (n: number) => (n <= 30 ? 0 : n <= 60 ? 1 : n <= 90 ? 2 : 3);
 
 const pictures: (SkPicture | null)[] = [null, null, null, null];
@@ -41,8 +41,12 @@ export function background(phase: number): SkPicture {
 }
 
 function paintBackground(g: Painter, phase: number) {
-  const S = SKIES[phase];
+  const S = sky(phase);
   g.fillRect(0, 0, W, 320, g.linear(0, 0, 0, 300, [[0, S.sky[0]], [0.62, S.sky[1]], [1, S.sky[2]]]));
+  if (THEME.snow) { // festive: snowflakes hang in the sky all day
+    const rnd = mulberry32(11);
+    for (let k = 0; k < 40; k++) { const x = rnd() * W, y = 60 + rnd() * 150, r = 1.4 + rnd() * 2.2; g.fillCircle(x, y, r, 'rgba(255,255,255,.85)'); }
+  }
   if (phase === 3) {
     const rnd = mulberry32(7);
     for (let k = 0; k < 90; k++) { const a = 0.4 + rnd() * 0.6; g.fillCircle(rnd() * W, rnd() * 220, 0.6 + rnd() * 1.6, `rgba(255,255,240,${a})`); }
@@ -107,10 +111,10 @@ function paintBackground(g: Painter, phase: number) {
   };
   palm(150, -26); palm(1188, 30);
   // bunting across the window
-  const flags = ['#FF6B8A', '#45C6F2', '#FFC857', '#A7D95B', '#A78BFA'];
+  const flags = THEME.bunting;
   for (let k = 0; k < 32; k++) {
     const x = 30 + k * 38, y = 54 + Math.sin((k / 31) * Math.PI) * 14;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + 26, y + 1); g.lineTo(x + 13, y + 24); g.closePath(); g.fill(flags[k % 5]);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + 26, y + 1); g.lineTo(x + 13, y + 24); g.closePath(); g.fill(flags[k % flags.length]);
   }
   // back wall: warm planks
   g.fillRect(0, 318, W, 176, S.wall);
@@ -126,23 +130,24 @@ function paintBackground(g: Painter, phase: number) {
     g.text(F.name, 202, 381 + k * 15, { size: 11, c: 'rgba(244,241,230,.85)', align: 'left' });
   });
   // window frame, shelf, posts
-  g.fillRect(0, 312, W, 10, '#B9733F'); g.fillRect(0, 0, 26, 494, '#B9733F'); g.fillRect(W - 26, 0, 26, 494, '#B9733F');
+  const [frame, trim] = THEME.frame;
+  g.fillRect(0, 312, W, 10, frame); g.fillRect(0, 0, 26, 494, frame); g.fillRect(W - 26, 0, 26, 494, frame);
   g.fillRect(4, 0, 4, 494, 'rgba(255,255,255,.15)'); g.fillRect(W - 22, 0, 4, 494, 'rgba(255,255,255,.15)');
-  g.rr(262, 296, 756, 16, 6); g.fill('#9A5A32');
+  g.rr(262, 296, 756, 16, 6); g.fill(trim);
   // awning
   for (let k = 0; k < 17; k++) {
-    const c = k % 2 ? CREAM : '#FF5A7E';
+    const c = k % 2 ? THEME.awning[1] : THEME.awning[0];
     g.fillRect(k * 80, 0, 80, 30, c);
     g.beginPath(); g.arc(k * 80 + 40, 30, 40, 0, Math.PI); g.fill(c);
     g.beginPath(); g.arc(k * 80 + 40, 30, 40, 0.15, Math.PI - 0.15); g.lineTo(k * 80 + 40, 36); g.fill('rgba(0,0,0,.08)');
   }
   g.fillRect(0, 0, W, 4, 'rgba(37,35,58,.14)');
   // pick-up sign
-  g.lineWidth = 3; g.beginPath(); g.moveTo(1070, 244); g.lineTo(1070, 266); g.moveTo(1180, 244); g.lineTo(1180, 266); g.stroke('#9A5A32');
+  g.lineWidth = 3; g.beginPath(); g.moveTo(1070, 244); g.lineTo(1070, 266); g.moveTo(1180, 244); g.lineTo(1180, 266); g.stroke(trim);
   g.rr(1040, 262, 170, 42, 21); g.fill('#FFC857'); g.stroke('#E09A1E');
   g.text('PICK UP', 1125, 284, { size: 20, c: INK });
   // counter top with plank seams + rope trim
-  g.fillRect(0, 494, W, 106, g.linear(0, 494, 0, 600, [[0, '#F6BE7E'], [1, '#DE9A5C']]));
+  g.fillRect(0, 494, W, 106, g.linear(0, 494, 0, 600, [[0, THEME.counter[0]], [1, THEME.counter[1]]]));
   g.lineWidth = 2;
   for (let k = 0; k < 9; k++) {
     const y = 520 + k * 9 + (k % 3) * 2;
@@ -186,13 +191,13 @@ export function drawStageBackdrop(g: Painter, phase: number, L: StageLayout, t: 
 
 /** Above the awning: planked shack front, roof trim and a bulb-lit sign (only when there's room above the HUD). */
 function drawShackFront(g: Painter, phase: number, SW: number, oy: number, hudY: number, t: number) {
-  const S = SKIES[phase], night = phase === 3;
-  g.fillRect(0, 0, SW, oy, g.linear(0, 0, 0, oy, [[0, '#8E5530'], [1, '#B9733F']]));
+  const S = sky(phase), night = phase === 3, [frame, trim] = THEME.frame;
+  g.fillRect(0, 0, SW, oy, g.linear(0, 0, 0, oy, [[0, trim], [1, frame]]));
   for (let y = oy - 26, row = 0; y > -26; y -= 26, row++) {
     g.fillRect(0, y, SW, 2, 'rgba(0,0,0,.12)');
     for (let x = (row % 2) * 90; x < SW; x += 180) g.fillRect(x, y, 2, 26, 'rgba(0,0,0,.08)');
   }
-  g.fillRect(0, oy - 12, SW, 12, '#9A5A32');
+  g.fillRect(0, oy - 12, SW, 12, trim);
   g.fillRect(0, oy - 12, SW, 3, 'rgba(255,255,255,.18)');
   if (S.tint) g.fillRect(0, 0, SW, oy, S.tint);
 
@@ -221,12 +226,12 @@ function drawShackFront(g: Painter, phase: number, SW: number, oy: number, hudY:
 
 /** String lights along the awning: live so they twinkle; they only really glow at golden hour and after dark. */
 export function drawLights(g: Painter, t: number, phase: number, x0 = 0, x1 = W) {
-  const on = [0.25, 0.55, 0.8, 1][phase], cols = ['#FFE08A', '#FF8FB0', '#8FE3FF', '#C7F08A'];
+  const on = [0.25, 0.55, 0.8, 1][phase], cols = THEME.lights;
   g.lineWidth = 1.5; g.lineCap = 'butt'; g.beginPath();
   for (let x = Math.floor(x0 / 20) * 20; x <= x1; x += 20) g.lineTo(x, 40 + Math.abs(Math.sin((x / W) * Math.PI * 4)) * 14);
   g.stroke('rgba(37,35,58,.5)');
   for (let k = Math.ceil((x0 - 20) / 38); k <= Math.floor((x1 - 20) / 38); k++) {
-    const x = 20 + k * 38, y = 44 + Math.abs(Math.sin((x / W) * Math.PI * 4)) * 14, tw = 0.75 + 0.25 * Math.sin(t * 2.2 + k * 1.7), c = cols[((k % 4) + 4) % 4];
+    const x = 20 + k * 38, y = 44 + Math.abs(Math.sin((x / W) * Math.PI * 4)) * 14, tw = 0.75 + 0.25 * Math.sin(t * 2.2 + k * 1.7), c = cols[((k % cols.length) + cols.length) % cols.length];
     if (on > 0.5) g.fillCircle(x, y + 4, 12, hexA(c, 0.22 * on * tw));
     g.fillCircle(x, y + 4, 4, on > 0.5 ? c : 'rgba(255,255,255,.75)');
   }

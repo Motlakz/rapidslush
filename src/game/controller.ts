@@ -2,12 +2,13 @@
 // turns engine events into feedback, and talks to the (mock) server at round start and end.
 // No Skia imports: the stage component renders whatever this module exposes.
 import {
-  BELT_Y, CUP_H, FLAVOURS as FL, MAX_LEVEL, SPIN, STATION_X, bot, clean, createRound, levelConfig, send, spinConfig, step, topping,
-  type Cup, type Mode, type Round,
+  BELT_Y, BLADE, BLEND, CUP_H, FLAVOURS as FL, POUR, SPIN, STATION_X, blendConfig, bot, clean, createRound, levelConfig, scoop, send,
+  spinConfig, step, topping, type Cup, type Mode, type Round,
 } from '@/engine';
 import { CUPS, SKINS, glassFor } from '@/game/content';
 import { FX, addFloat, resetFx, spawnParts } from '@/game/fx';
-import { CTRL, inBox, layoutStage, spinBtn, type StageLayout } from '@/game/layout';
+import { CTRL, blendDeck, inBox, layoutStage, spinBtn, type StageLayout } from '@/game/layout';
+import { MACHINE } from '@/game/machines';
 import { Platform } from 'react-native';
 import { setRoundGlass } from '@/game/render/glass';
 import { viewOf, type Banner, type Coach, type RenderCtx } from '@/game/render/view';
@@ -15,7 +16,7 @@ import { show } from '@/game/ui-store';
 import { track } from '@/services/analytics';
 import { Sound, buzz } from '@/services/feedback';
 import { persist, save, uid, type Session } from '@/services/save';
-import { Server, spinUnlocked, trackOf } from '@/services/server';
+import { Server, currentMachine, trackOf } from '@/services/server';
 
 const STEP = 1 / 120;
 
@@ -36,29 +37,28 @@ export const App = {
   touch: Platform.OS !== 'web',
 };
 
-export const cfgFor = (n: number, m: Mode) => (m === 'spin' ? spinConfig(n, save().tune) : levelConfig(n, save().tune));
+export const cfgFor = (n: number, m: Mode) => (m === 'spin' ? spinConfig(n, save().tune) : m === 'blend' ? blendConfig(n, save().tune) : levelConfig(n, save().tune));
 const cupTopY = (c: Cup) => (c.p ? c.p.y - CUP_H * c.p.s : BELT_Y - CUP_H);
 
 // ---------- showcase (dev, web) ----------
 /**
- * Marketing captures of the real game for the website: `?showcase=belt|spin&level=N[&shack=N][&ui=shop]` plays attract
+ * Marketing captures of the real game for the website: `?showcase=belt|spin|blend&level=N[&shack=N][&theme=id][&ui=shop]` plays attract
  * mode at that level with no menus (or one named panel). Development web builds only; a release build never reads it.
  */
-export const SHOWCASE: { mode: Mode; level: number; shack: number; ui: string | null } | null = (() => {
+export const SHOWCASE: { mode: Mode; level: number; shack: number; ui: string | null; theme: string | null } | null = (() => {
   if (!__DEV__ || Platform.OS !== 'web' || typeof location === 'undefined') return null;
   const q = new URLSearchParams(location.search), m = q.get('showcase');
-  if (m !== 'belt' && m !== 'spin') return null;
+  if (m !== 'belt' && m !== 'spin' && m !== 'blend') return null;
   const level = Math.max(1, Number(q.get('level')) || 1);
-  return { mode: m, level, shack: Math.max(1, Number(q.get('shack')) || level), ui: q.get('ui') };
+  return { mode: m, level, shack: Math.max(1, Number(q.get('shack')) || level), ui: q.get('ui'), theme: q.get('theme') };
 })();
 
 // ---------- attract mode ----------
 export function newAttract() {
-  const S = save(), X = SHOWCASE, spin = X ? X.mode === 'spin' : S.machine === 'spin' && spinUnlocked();
-  const lv = X ? Math.min(X.level, spin ? SPIN.MAX_LEVEL : MAX_LEVEL)
-    : spin ? Math.min(trackOf('spin').highest, SPIN.MAX_LEVEL) : Math.max(1, Math.min(S.progress.highest, MAX_LEVEL));
-  const r = createRound(lv, { countdown: 0.01, seed: Math.floor(Math.random() * 1e9), mode: spin ? 'spin' : 'belt' });
-  if (spin) setRoundGlass(r, glassFor(X ? X.shack : S.progress.highest));
+  const S = save(), X = SHOWCASE, m: Mode = X ? X.mode : currentMachine(), max = MACHINE[m].max;
+  const lv = Math.max(1, Math.min(X ? X.level : trackOf(m).highest, max));
+  const r = createRound(lv, { countdown: 0.01, seed: Math.floor(Math.random() * 1e9), mode: m });
+  if (m !== 'belt') setRoundGlass(r, glassFor(X ? X.shack : S.progress.highest));
   r.time = 9999;
   App.attract = r;
 }
@@ -74,7 +74,7 @@ export function startLevel(n: number, m: Mode = 'belt') {
   Object.assign(App, { session: res.session, mode: 'round', paused: false, settled: false, lastCd: 9, lastTick: 99, hbT: 0, acc: 0 });
   const r = createRound(n, { tune: S.tune, mode: m });
   App.round = r;
-  if (m === 'spin') setRoundGlass(r, glassFor(S.progress.highest)); // the shack's current glassware, shared by every machine
+  if (m !== 'belt') setRoundGlass(r, glassFor(S.progress.highest)); // the shack's current glassware, shared by every machine
   else {
     const gt = glassFor(n).tier;
     if (gt > (S.flags.glass || 0)) { S.flags.glass = gt; track('glass_upgrade_seen', { tier: gt, level: n }); }
@@ -138,7 +138,7 @@ const finePointer = () => Platform.OS === 'web' && typeof window !== 'undefined'
 export const keyHintsOn = () => finePointer() && !App.touch;
 
 // ---------- input ----------
-type Control = { k: 'tap'; i: number } | { k: 'send' } | { k: 'top' } | { k: 'pause' } | null;
+type Control = { k: 'tap'; i: number } | { k: 'scoop'; i: number } | { k: 'send' } | { k: 'top' } | { k: 'pause' } | null;
 interface Ptr { c: Control; last: { x: number; y: number } }
 const ptrs = new Map<string, Ptr>();
 const held = [new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>(), new Set<string>()];
@@ -146,8 +146,20 @@ const held = [new Set<string>(), new Set<string>(), new Set<string>(), new Set<s
 /** `s` is a stage point; controls live in control space, pause in the HUD's right group. */
 function controlAt(s: { x: number; y: number }, r: Round): Control {
   const L = LAYOUT;
-  if (inBox({ x: s.x - (L.SW - 1280 - L.safe.right), y: s.y - L.hudY }, CTRL.pause)) return { k: 'pause' };
-  const p = { x: s.x - L.ox, y: s.y - L.ctrlY };
+  // undo the readability boosts: the HUD's right group scales about the safe right edge, the deck about its centre
+  const hx = (s.x - (L.SW - L.safe.right)) / L.hudK + 1280, hy = (s.y - L.hudY) / L.hudK;
+  if (inBox({ x: hx, y: hy }, CTRL.pause)) return { k: 'pause' };
+  const p = { x: (s.x - L.deckX) / L.deckK, y: (s.y - L.deckY) / L.deckK };
+  if (r.mode === 'blend') {
+    for (const d of blendDeck(r.L)) {
+      if (!inBox(p, d.box)) continue;
+      if (d.kind === 'scoop') return { k: 'scoop', i: d.i };
+      if (d.kind === 'blend') return { k: 'tap', i: BLADE };
+      if (d.kind === 'pour') return { k: 'tap', i: POUR };
+      return d.kind === 'top' ? { k: 'top' } : { k: 'send' };
+    }
+    return null;
+  }
   if (r.mode === 'spin') {
     for (let i = 0; i < r.L.taps; i++) if (inBox(p, spinBtn(i, r.L.taps))) return { k: 'tap', i };
     if (r.L.topping !== null && inBox(p, CTRL.top2)) return { k: 'top' };
@@ -190,6 +202,7 @@ export function pointerDown(id: string, x: number, y: number, touch: boolean) {
   ptrs.set(id, { c, last: { x, y } });
   if (!c) return;
   if (c.k === 'tap') setHold(c.i, 'p' + id, true);
+  else if (c.k === 'scoop') scoop(r, c.i);
   else if (c.k === 'send') doSend();
   else if (c.k === 'top') doTop();
   else if (c.k === 'pause') pauseRound();
@@ -210,6 +223,8 @@ export function pointerUp(id: string) {
 
 const KEYTAP: Record<string, number> = { a: 0, s: 1, d: 2, '1': 0, '2': 1, '3': 2, j: 0, k: 1, l: 2 };
 const KEYSPIN: Record<string, number> = { a: 0, s: 1, d: 2, f: 3, g: 4, '1': 0, '2': 1, '3': 2, '4': 3, '5': 4 };
+const KEYSCOOP: Record<string, number> = { a: 0, s: 1, d: 2, f: 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+const KEYBLEND: Record<string, number> = { j: BLADE, k: POUR };
 /** Keyboard (web, hardware keyboards). Returns true when the key was used. */
 export function keyDown(key: string, repeat: boolean): boolean {
   const k = key.toLowerCase(), r = App.round;
@@ -217,6 +232,13 @@ export function keyDown(key: string, repeat: boolean): boolean {
   App.touch = false; // a real keyboard is in use
   if (k === 'escape' || k === 'p') { if (App.paused) resumeRound(); else pauseRound(); return true; }
   if (App.paused || repeat) return false;
+  if (r.mode === 'blend') {
+    if (k in KEYSCOOP && KEYSCOOP[k] < r.L.taps) { scoop(r, KEYSCOOP[k]); return true; }
+    if (k in KEYBLEND) { setHold(KEYBLEND[k], 'k' + k, true); return true; }
+    if (k === ' ' || k === 'enter') { doSend(); return true; }
+    if (k === 't') { doTop(); return true; }
+    return false;
+  }
   if (r.mode === 'spin') {
     if (k in KEYSPIN && KEYSPIN[k] < r.L.taps) { setHold(KEYSPIN[k], 'k' + k, true); return true; }
     if (k === ' ' || k === 'enter') { doTop(); return true; }
@@ -228,7 +250,7 @@ export function keyDown(key: string, repeat: boolean): boolean {
   return false;
 }
 export function keyUp(key: string) {
-  const k = key.toLowerCase(), m = App.round?.mode === 'spin' ? KEYSPIN : KEYTAP;
+  const mode = App.round?.mode, k = key.toLowerCase(), m = mode === 'spin' ? KEYSPIN : mode === 'blend' ? KEYBLEND : KEYTAP;
   if (k in m) setHold(m[k], 'k' + k, false);
 }
 
@@ -267,8 +289,11 @@ function handleEvents(r: Round, live: boolean) {
       viewOf(r).shakeT = r.clock;
       if (live) Sound.sfx('topping');
       spawnParts(e.cup.x, cupTopY(e.cup), '#fff', 8, 1.2, 80);
+    } else if (e.type === 'scoop') {
+      if (live) { Sound.sfx('topping'); buzz('light'); }
+      spawnParts(BLEND.CX, 140, FL[e.flavour].color, 8, 1.4, 90);
     } else if (e.type === 'lap') { addFloat(e.cup.x, 330, 'Again next lap', '#0F6A91', '#DDF4FD', 15); if (live) Sound.sfx('lap'); }
-    else if (e.type === 'toppingMiss') { if (live) { Sound.sfx('miss'); addFloat(r.mode === 'spin' ? 640 : STATION_X[r.L.taps - 1], 330, 'No cup to top', '#fff', '#8A87A6', 16); } }
+    else if (e.type === 'toppingMiss') { if (live) { Sound.sfx('miss'); addFloat(r.mode === 'belt' ? STATION_X[r.L.taps - 1] : 640, 330, 'No cup to top', '#fff', '#8A87A6', 16); } }
     else if (e.type === 'clean') { if (live) { Sound.sfx('clean'); track('spill_cleaned', { level: r.n }); } addFloat(e.x, e.y - 20, 'Wiped!', '#4A6E17', '#E8F5D2', 16); }
     else if (e.type === 'go') { if (live) { Sound.sfx('go'); track('round_started', { level: r.n }); } }
     else if (e.type === 'win') { if (live) Sound.sfx('win'); }
@@ -323,6 +348,7 @@ export function tick(rawDt: number): { r: Round; dt: number; t: number; ctx: Ren
     ctx: {
       live, paused: frozen, reduced: S.settings.reduced,
       skin: SKINS.find(s => s.id === S.inv.skin) ?? SKINS[0],
+      shack: SHOWCASE?.theme ?? S.inv.shack,
       cup: CUPS.find(c => c.id === S.inv.cup) ?? CUPS[0],
       highest: SHOWCASE ? SHOWCASE.shack : S.progress.highest, coach: live ? App.coach : null, banner: live ? App.banner : null, keyHints: keyHintsOn(),
     },

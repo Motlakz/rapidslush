@@ -2,12 +2,13 @@
 import { useRef, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { CHAPTERS, SCHEDULE, SPIN_CHAPTERS, SPIN_SCHEDULE, type Mode } from '@/engine';
+import { type Mode } from '@/engine';
 import { goHome } from '@/game/controller';
+import { MACHINE, MACHINE_ORDER } from '@/game/machines';
 import { show } from '@/game/ui-store';
 import { track } from '@/services/analytics';
 import { Sound } from '@/services/feedback';
-import { maxFor, spinUnlocked, trackOf } from '@/services/server';
+import { machineOpen, maxFor, trackOf } from '@/services/server';
 import { LockIcon, StarIcon } from '../icons';
 import { B, Btn, BtnText, Col, H2, Row, Small } from '../kit';
 import { C, F } from '../theme';
@@ -16,9 +17,9 @@ import { Panel, Screen, useSave } from './common';
 
 export function Levels({ m: want }: { m: Mode }) {
   useSave();
-  const m: Mode = want === 'spin' && spinUnlocked() ? 'spin' : 'belt';
-  const P = trackOf(m), maxL = maxFor(m), sched = m === 'spin' ? SPIN_SCHEDULE : SCHEDULE;
-  const chNames = m === 'spin' ? SPIN_CHAPTERS : CHAPTERS;
+  const m: Mode = machineOpen(want) ? want : 'belt';
+  const P = trackOf(m), maxL = maxFor(m), sched = MACHINE[m].schedule;
+  const chNames = MACHINE[m].chapters;
   // Short screens (landscape phones) keep the grid in view: a one-line header, a smaller title, no footer note.
   const { availH } = useUi(), compact = availH < 560;
   const newAt: Record<number, string> = {};
@@ -29,10 +30,16 @@ export function Levels({ m: want }: { m: Mode }) {
 
   const machines = (
     <Row style={{ gap: 8, flexWrap: 'wrap' }}>
-      <Btn size="sm" flat tone={m === 'belt' ? 'ink' : 'default'} onPress={() => { track('machine_selected', { machine: 'belt', source: 'level_select' }); show({ name: 'levels', m: 'belt' }); }}><BtnText size="sm" tone={m === 'belt' ? 'ink' : 'default'}>Slush Line</BtnText></Btn>
-      <Btn size="sm" flat tone={m === 'spin' ? 'ink' : 'default'} disabled={!spinUnlocked()} onPress={() => { track('machine_selected', { machine: 'spin', source: 'level_select' }); show({ name: 'levels', m: 'spin' }); }}>
-        {!spinUnlocked() && <LockIcon s={14} />}<BtnText size="sm" tone={m === 'spin' ? 'ink' : 'default'}>Spin Bar</BtnText>
-      </Btn>
+      {MACHINE_ORDER.map(id => {
+        const open = machineOpen(id), on = m === id;
+        return (
+          <Btn key={id} size="sm" flat tone={on ? 'ink' : 'default'} disabled={!open}
+            label={open ? MACHINE[id].name : `${MACHINE[id].name}, opens after level ${MACHINE[id].unlockAt}`}
+            onPress={() => { track('machine_selected', { machine: id, source: 'level_select' }); show({ name: 'levels', m: id }); }}>
+            {!open && <LockIcon s={14} />}<BtnText size="sm" tone={on ? 'ink' : 'default'}>{MACHINE[id].name}</BtnText>
+          </Btn>
+        );
+      })}
     </Row>
   );
 

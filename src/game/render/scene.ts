@@ -4,18 +4,22 @@
 import { BELT_Y, H, SPIN, W, type Round } from '@/engine';
 import { clamp } from '@/engine/util';
 import type { StageLayout } from '@/game/layout';
-import { background, drawLights, drawStageBackdrop, drawTower, phaseFor } from './background';
-import { drawCup, drawTicket } from './cup';
+import { background, drawLights, drawStageBackdrop, drawTower, phaseFor, setShackTheme } from './background';
+import { drawBlendScene } from './blend';
+import { drawCup, drawTicket, setTicketScale } from './cup';
 import { FX, drawFloats, drawParts, drawSpinStream, drawStreams } from './fx';
 import { drawBanner, drawControls, drawCoach, drawCountdown, drawHUD } from './hud';
 import { drawBelt, drawExitCurtain, drawMachine, drawPuddles, drawSpinMachine, drawTray } from './machine';
 import type { Painter } from './painter';
 import type { RenderCtx } from './view';
 
-export const scenePhase = (r: Round, ctx: RenderCtx) => phaseFor(r.mode === 'spin' ? ctx.highest : r.n);
+// the Slush Line's level sets the time of day; the other machines follow the shack's progress
+export const scenePhase = (r: Round, ctx: RenderCtx) => phaseFor(r.mode === 'belt' ? r.n : ctx.highest);
 
 export function renderScene(g: Painter, r: Round, dt: number, t: number, ctx: RenderCtx, L: StageLayout) {
   FX.reduced = ctx.reduced;
+  setShackTheme(ctx.shack);
+  setTicketScale(L.ticketK);
   let sx = 0, sy = 0;
   if (FX.shake > 0 && !ctx.reduced) { sx = (Math.random() - 0.5) * FX.shake * 16; sy = (Math.random() - 0.5) * FX.shake * 10; }
   FX.shake = Math.max(0, FX.shake - dt * 3);
@@ -32,6 +36,8 @@ export function renderScene(g: Painter, r: Round, dt: number, t: number, ctx: Re
   drawTower(g, r);
   if (r.mode === 'spin') {
     drawSpinScene(g, r, t, dt, ctx);
+  } else if (r.mode === 'blend') {
+    drawBlendScene(g, r, t, dt, ctx, x0, x1);
   } else {
     drawMachine(g, r, t, ctx);
     drawPuddles(g, r);
@@ -53,7 +59,7 @@ export function renderScene(g: Painter, r: Round, dt: number, t: number, ctx: Re
   if (!ctx.live) return;
   // HUD row
   g.save(); g.translate(0, L.hudY);
-  drawHUD(g, r, t, L.SW, L.safe.left, L.safe.right);
+  drawHUD(g, r, t, L.SW, L.safe.left, L.safe.right, L.hudK);
   const B = ctx.banner;
   if (B && r.phase === 'playing') {
     const a = clamp(Math.min(B.t * 4, (5 - B.t) * 2), 0, 1);
@@ -61,7 +67,7 @@ export function renderScene(g: Painter, r: Round, dt: number, t: number, ctx: Re
   }
   g.restore();
   // control deck
-  g.save(); g.translate(L.ox, L.ctrlY);
+  g.save(); g.translate(L.deckX, L.deckY); g.scale(L.deckK, L.deckK);
   drawControls(g, r, ctx);
   drawCoach(g, r, t, ctx, 'controls');
   g.restore();

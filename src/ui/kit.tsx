@@ -1,8 +1,10 @@
-// UI kit matching the prototype's CSS components (.btn, .card, .tag, .pill, .bar). Sizes are stage units.
+// UI kit matching the prototype's CSS components (.btn, .card, .tag, .pill, .bar). Sizes are stage units, scaled for
+// small screens by the menu type scale (scale.ts useTypeK): text keeps per-kind floors (body 16, small 14), padding shrinks.
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import { Sound } from '@/services/feedback';
+import { fz, useTypeK } from './scale';
 import { C, F, R, shadow } from './theme';
 
 type Tone = 'default' | 'berry' | 'razz' | 'lime' | 'mango' | 'grape' | 'ink';
@@ -31,9 +33,12 @@ interface BtnProps {
 
 /** A chunky arcade button: coloured face over a darker base that it presses down into. */
 export function Btn({ tone = 'default', size = 'md', icon, flat, disabled, onPress, children, style, label }: BtnProps) {
-  const T = TONES[tone], depth = flat ? 0 : size === 'sm' ? 6 : 8;
-  const pad = size === 'big' ? { paddingVertical: 26, paddingHorizontal: 40 } : size === 'sm' ? { paddingVertical: 14, paddingHorizontal: 22 } : { paddingVertical: 20, paddingHorizontal: 32 };
-  const font = size === 'big' ? 28 : size === 'sm' ? 18 : 22;
+  const k = useTypeK(), T = TONES[tone], depth = flat ? 0 : size === 'sm' ? 6 : 8;
+  const [pv, ph] = size === 'big' ? [26, 40] : size === 'sm' ? [14, 22] : [20, 32];
+  // never shorter than a 44pt tap target
+  // padding shrinks faster than text (k²), so buttons stop being chunky on phones while labels stay readable
+  const pad = { paddingVertical: Math.max(size === 'sm' ? 12 : 13, Math.round(pv * k * k)), paddingHorizontal: Math.round(ph * k * k) };
+  const font = btnFont(size, k), iconSide = Math.max(48, Math.round((size === 'sm' ? 68 : 72) * k));
   return (
     <Pressable
       accessibilityRole="button"
@@ -48,7 +53,7 @@ export function Btn({ tone = 'default', size = 'md', icon, flat, disabled, onPre
           <View
             style={[
               s.btnFace, { backgroundColor: T.c, transform: [{ translateY: pressed && !disabled ? depth - 2 : 0 }] },
-              icon ? { width: size === 'sm' ? 68 : 72, height: size === 'sm' ? 68 : 72, padding: 0 } : pad,
+              icon ? { width: iconSide, height: iconSide, padding: 0 } : pad,
             ]}
           >
             {typeof children === 'string' ? <Text style={[s.btnText, { color: T.t, fontSize: font }]}>{children}</Text> : children}
@@ -59,8 +64,10 @@ export function Btn({ tone = 'default', size = 'md', icon, flat, disabled, onPre
   );
 }
 
+const btnFont = (size: 'big' | 'md' | 'sm', k: number) => (size === 'big' ? fz(28, k, 20) : size === 'sm' ? fz(18, k, 16) : fz(22, k, 17));
 export function BtnText({ children, tone = 'default', size = 'md' }: { children: ReactNode; tone?: Tone; size?: 'big' | 'md' | 'sm' }) {
-  return <Text style={[s.btnText, { color: TONES[tone].t, fontSize: size === 'big' ? 28 : size === 'sm' ? 18 : 22 }]}>{children}</Text>;
+  const k = useTypeK();
+  return <Text style={[s.btnText, { color: TONES[tone].t, fontSize: btnFont(size, k) }]}>{children}</Text>;
 }
 
 /** The token-cost chip inside a Play/Start button. */
@@ -69,13 +76,25 @@ export function CostChip({ cost, children, tone = 'berry' }: { cost: number; chi
   return (
     <View style={[s.cost, light && { backgroundColor: 'rgba(37,35,58,0.08)' }]}>
       {children}
-      <Text style={[s.num, { fontSize: 22, color: TONES[tone].t }]}>{cost ? cost : 'Free'}</Text>
+      <Text style={[s.num, { fontSize: fz(22, useTypeK(), 17), color: TONES[tone].t }]}>{cost ? cost : 'Free'}</Text>
     </View>
   );
 }
 
 export function Card({ children, style, flat }: { children: ReactNode; style?: StyleProp<ViewStyle>; flat?: boolean }) {
-  return <View style={[flat ? s.cardFlat : s.card, style]}>{children}</View>;
+  const k = useTypeK();
+  return <View style={[flat ? s.cardFlat : s.card, k < 1 && { padding: Math.round((flat ? 20 : 32) * k) }, style, k < 1 && shrinkPad(style, k)]}>{children}</View>;
+}
+/** Scale a style's own padding by k (cards and panels pass generous padding inline). */
+function shrinkPad(style: StyleProp<ViewStyle>, k: number): ViewStyle | null {
+  const f = StyleSheet.flatten(style);
+  if (!f) return null;
+  const out: Record<string, number> = {};
+  for (const key of ['padding', 'paddingVertical', 'paddingHorizontal', 'paddingTop', 'paddingBottom', 'gap'] as const) {
+    const v = f[key];
+    if (typeof v === 'number') out[key] = Math.round(v * k);
+  }
+  return out as ViewStyle;
 }
 
 type TagTone = 'default' | 'berry' | 'lime' | 'mango' | 'grape' | 'razz';
@@ -85,17 +104,18 @@ const TAGS: Record<TagTone, [string, string]> = {
 };
 /** A label chip. It hugs the start of its row by default; pass `style={{ alignSelf: 'center' }}` inside a centred card. */
 export function Tag({ tone = 'default', children, icon, style }: { tone?: TagTone; children: ReactNode; icon?: ReactNode; style?: StyleProp<ViewStyle> }) {
-  const [bg, fg] = TAGS[tone];
+  const [bg, fg] = TAGS[tone], k = useTypeK();
   return (
-    <View style={[s.tag, { backgroundColor: bg, paddingVertical: 7, paddingHorizontal: 15 }, style]}>
+    <View style={[s.tag, { backgroundColor: bg, paddingVertical: Math.round(7 * k), paddingHorizontal: Math.round(15 * k) }, style]}>
       {icon}
-      <Text style={[s.tagText, { color: fg }]}>{children}</Text>
+      <Text style={[s.tagText, { color: fg, fontSize: fz(16, k, 14) }]}>{children}</Text>
     </View>
   );
 }
 
 export function Pill({ children, onPress, label }: { children: ReactNode; onPress?: () => void; label?: string }) {
-  const body = <View style={s.pill}>{children}</View>;
+  const k = useTypeK();
+  const body = <View style={[s.pill, k < 1 && { paddingVertical: Math.round(11 * k), paddingLeft: Math.round(13 * k), paddingRight: Math.round(18 * k) }]}>{children}</View>;
   return onPress ? <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={() => { Sound.sfx('tap'); onPress(); }}>{body}</Pressable> : body;
 }
 
@@ -111,13 +131,27 @@ export const Row = ({ children, style }: { children: ReactNode; style?: StylePro
 export const Col = ({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) => <View style={[s.col, style]}>{children}</View>;
 export const Spacer = () => <View style={{ flex: 1 }} />;
 
-export const H1 = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.h1, style]}>{children}</Text>;
-export const H2 = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.h2, style]}>{children}</Text>;
-export const H3 = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.h3, style]}>{children}</Text>;
-export const P = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.p, style]}>{children}</Text>;
-export const Small = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.small, style]}>{children}</Text>;
-export const Num = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.num, style]}>{children}</Text>;
-export const B = ({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) => <Text style={[s.b, style]}>{children}</Text>;
+/**
+ * A text component at the menu type scale: its size (the kit's or an inline fontSize) shrinks with k on small screens
+ * but never under `floor`; the line height keeps its ratio.
+ */
+function scaledText(kind: 'h1' | 'h2' | 'h3' | 'p' | 'small' | 'num' | 'b', floor: number, display = false) {
+  return function ScaledText({ children, style }: { children: ReactNode; style?: StyleProp<TextStyle> }) {
+    const base: TextStyle = s[kind]; // looked up at render: the stylesheet is defined below
+    // display headings shrink faster (k²): on a phone the room is better spent on the content and the actions
+    const tk = useTypeK(), k = display ? tk * tk : tk;
+    const f: TextStyle = StyleSheet.flatten([base, style]) ?? {}, size = f.fontSize ?? 20, next = fz(size, k, floor);
+    const fit: TextStyle = f.lineHeight ? { fontSize: next, lineHeight: Math.round((f.lineHeight * next) / size) } : { fontSize: next };
+    return <Text style={[base, style, fit]}>{children}</Text>;
+  };
+}
+export const H1 = scaledText('h1', 32, true);
+export const H2 = scaledText('h2', 26, true);
+export const H3 = scaledText('h3', 20);
+export const P = scaledText('p', 16);
+export const Small = scaledText('small', 14);
+export const Num = scaledText('num', 16);
+export const B = scaledText('b', 16);
 
 /** A labelled stat box (Quota / Time / Score…). */
 export function Stat({ k, v, grow }: { k: string; v: ReactNode; grow?: boolean }) {

@@ -2,7 +2,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import { CAP, CFG, STATION_X } from '../constants';
-import { levelConfig, MAX_LEVEL, mulberry32, SPIN, spinConfig } from '../levels';
+import { BLEND, blendConfig, levelConfig, MAX_LEVEL, mulberry32, SPIN, spinConfig } from '../levels';
+import { BLADE, POUR, scoop, stationCup } from '../blend';
 import { pourInto } from '../liquid';
 import { bot, clean, createRound, send, step, topping } from '../index';
 import { judge } from '../scoring';
@@ -17,7 +18,7 @@ const toPlaying = (r: Round) => { while (r.phase === 'countdown') step(r, DT); }
 const settle = (r: Round) => { while (r.belt.phase === 'slide') step(r, DT); };
 const firstCup = (r: Round) => r.cups.find(c => !c.judged)!;
 const setOrder = (c: Cup, tap: number, amt: number, topping: number | null = null) => {
-  c.order = { type: 'single', layers: [{ tap, amt }], total: amt, topping, multi: false };
+  c.order = { type: 'single', layers: [{ tap, amt }], total: amt, topping, multi: false, frozen: false };
 };
 
 describe('liquid model', () => {
@@ -140,7 +141,7 @@ describe('scoring', () => {
   test('layers off is partial credit: served without the layer bonus', () => {
     const r = createRound(20, { seed: 8 });
     const c = firstCup(r);
-    c.order = { type: 'duo', layers: [{ tap: 0, amt: 35 }, { tap: 1, amt: 35 }], total: 70, topping: null, multi: true };
+    c.order = { type: 'duo', layers: [{ tap: 0, amt: 35 }, { tap: 1, amt: 35 }], total: 70, topping: null, multi: true, frozen: false };
     pourInto(r, c, 0, 55); pourInto(r, c, 1, 15);
     judge(r, c);
     expect(c.verdict!.ok).toBe(true);
@@ -254,6 +255,21 @@ describe('round lifecycle', () => {
     expect(fails).toEqual([]);
   });
 
+  test('every Blend Station level is winnable by a good player', () => {
+    const fails: number[] = [];
+    for (let n = 1; n <= BLEND.MAX_LEVEL; n++) {
+      let wins = 0;
+      for (let s = 0; s < 3; s++) {
+        const r = createRound(n, { seed: n * 17 + s, mode: 'blend' });
+        const rng = mulberry32(n * 7 + s);
+        run(r, r.L.dur + 10, x => bot(x, 0.95, rng));
+        if (r.result?.win) wins++;
+      }
+      if (wins === 0) fails.push(n);
+    }
+    expect(fails).toEqual([]);
+  });
+
   test('rounds are deterministic for a seed', () => {
     const play = () => {
       const r = createRound(25, { seed: 999 });
@@ -284,5 +300,87 @@ describe('level configs', () => {
       expect(L.taps).toBeGreaterThanOrEqual(2);
       expect(L.taps).toBeLessThanOrEqual(5);
     }
+  });
+});
+
+describe('blend station', () => {
+  const ready = (n = 1) => { const r = createRound(n, { seed: 3, mode: 'blend' }); toPlaying(r); return r; };
+  const blendTo = (r: Round, meter: number) => { r.jar.meter = meter; r.jar.speed = 0; };
+  const pourTo = (r: Round, amt: number) => {
+    r.hold[POUR] = true;
+    while (stationCup(r)!.total + r.flow[POUR] / CFG.flow.decay < amt) step(r, DT);
+    r.hold[POUR] = false;
+    run(r, 0.6);
+  };
+
+  test('a smooth, well-poured blend is served; the queue moves up on SERVE', () => {
+    const r = ready(), c = stationCup(r)!;
+    for (const l of c.order.layers) scoop(r, l.tap);
+    blendTo(r, BLEND.CENTER);
+    pourTo(r, c.order.total);
+    expect(send(r)).toBe(true);
+    expect(c.verdict!.ok).toBe(true);
+    expect(c.leaving).toBe(true);
+    settle(r);
+    expect(stationCup(r)).not.toBe(c);
+    expect(r.jar.has.some(Boolean)).toBe(false);
+  });
+
+  test('outside the smooth band is chunky or watery, and fails', () => {
+    for (const [meter, label] of [[0.2, 'Too chunky'], [1.2, 'Too watery']] as const) {
+      const r = ready(), c = stationCup(r)!;
+      for (const l of c.order.layers) scoop(r, l.tap);
+      blendTo(r, meter);
+      pourTo(r, c.order.total);
+      send(r);
+      expect(c.verdict!.ok).toBe(false);
+      expect(c.verdict!.label).toBe(label);
+    }
+  });
+
+  test('the blade coasts after BLEND is released, and frozen fruit blends slower', () => {
+    const climb = (frozen: boolean) => {
+      const r = ready(9), c = stationCup(r)!;
+      c.order.frozen = frozen;
+      scoop(r, c.order.layers[0].tap);
+      r.hold[BLADE] = true; run(r, 0.6); r.hold[BLADE] = false;
+      const atRelease = r.jar.meter;
+      run(r, 1);
+      return { atRelease, after: r.jar.meter };
+    };
+    const warm = climb(false), cold = climb(true);
+    expect(warm.after).toBeGreaterThan(warm.atRelease);
+    expect(cold.atRelease).toBeLessThan(warm.atRelease);
+  });
+
+  test('a missing flavour fails the order; scooping is locked once the pour starts', () => {
+    const r = ready(3), c = stationCup(r)!;
+    c.order = { type: 'duo', layers: [{ tap: 0, amt: 35 }, { tap: 1, amt: 35 }], total: 70, topping: null, multi: false, frozen: false };
+    scoop(r, 0);
+    blendTo(r, BLEND.CENTER);
+    pourTo(r, 70);
+    expect(scoop(r, 1)).toBe(false);
+    send(r);
+    expect(c.verdict!.label).toBe('Missing flavour');
+  });
+
+  test('pouring with no cup at the station is waste', () => {
+    const r = ready(), c = stationCup(r)!;
+    scoop(r, c.order.layers[0].tap);
+    send(r); // serve the empty cup: missed, and the queue starts sliding
+    scoop(r, 0); // nothing at the station mid-slide, but the jar can still be loaded
+    r.jar.has[0] = true; r.jar.left = BLEND.JAR;
+    r.hold[POUR] = true; run(r, 0.3); r.hold[POUR] = false;
+    expect(r.waste).toBeGreaterThan(0);
+  });
+
+  test('blend configs use 2–4 flavour bins and the band narrows', () => {
+    for (let n = 1; n <= BLEND.MAX_LEVEL; n++) {
+      const L = blendConfig(n);
+      expect(L.taps).toBeGreaterThanOrEqual(2);
+      expect(L.taps).toBeLessThanOrEqual(4);
+      expect(new Set(L.flavours).size).toBe(L.taps);
+    }
+    expect(blendConfig(30).zone).toBeLessThan(blendConfig(1).zone);
   });
 });

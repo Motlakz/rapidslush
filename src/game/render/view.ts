@@ -6,11 +6,12 @@ export interface RoundView {
   lev: number[];        // tap lever angles, eased toward held/released
   shakeT: number;       // topping shaker wiggle start (round clock)
   topPress: number;     // topping button press time (round clock)
+  blendA: number;       // Blend Station: how far the jar's contents have swirled (drives the blade and the chunks)
 }
 const views = new WeakMap<Round, RoundView>();
 export function viewOf(r: Round): RoundView {
   let v = views.get(r);
-  if (!v) { v = { lev: [-0.35, -0.35, -0.35], shakeT: -9, topPress: -9 }; views.set(r, v); }
+  if (!v) { v = { lev: [-0.35, -0.35, -0.35], shakeT: -9, topPress: -9, blendA: 0 }; views.set(r, v); }
   return v;
 }
 
@@ -23,6 +24,8 @@ export interface RenderCtx {
   paused: boolean;
   reduced: boolean;       // reduced effects (plan §3.8)
   skin: Skin;
+  /** shack theme id (src/game/shacks.ts) */
+  shack: string;
   cup: CupDesign;
   highest: number;        // belt progress, sets the time of day for Spin Bar
   coach: Coach | null;

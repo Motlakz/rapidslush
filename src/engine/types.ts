@@ -1,4 +1,4 @@
-export type Mode = 'belt' | 'spin';
+export type Mode = 'belt' | 'spin' | 'blend';
 export type OrderType = 'single' | 'duo' | 'uneven' | 'trio';
 export type Phase = 'countdown' | 'playing' | 'ending' | 'done';
 export type WasteKind = 'outside' | 'overflow' | 'tray';
@@ -49,9 +49,15 @@ export interface LevelConfig {
   // carousel only (zero on the belt)
   slots: number;
   dir: 1 | -1;
+  /** carousel: degrees per second. Blend Station: how fast the smoothness meter climbs at full blade speed */
   speed: number;
   win: number;
   maxLaps: number;
+  // Blend Station only (zero elsewhere)
+  /** half-width of the smooth band on the 0–1.25 smoothness meter */
+  zone: number;
+  /** share of orders that use frozen fruit (blends at 60% speed) */
+  frozen: number;
 }
 
 export interface Layer {
@@ -65,6 +71,8 @@ export interface Order {
   total: number;
   topping: number | null;
   multi: boolean;
+  /** Blend Station: frozen fruit, which blends slower */
+  frozen: boolean;
 }
 
 export interface Verdict {
@@ -112,6 +120,20 @@ export interface Cup {
   inWin: boolean;
   p: SpinPos | null;
   botErr?: number;
+  /** Blend Station: the jar's smoothness when this cup was first poured (-1 until then) */
+  smooth: number;
+}
+
+/** Blend Station's jar: which flavours are in, how smooth it is, how much is left to pour. */
+export interface Jar {
+  has: boolean[];
+  meter: number;
+  /** blade speed now: meter units per second */
+  speed: number;
+  /** volume left to pour (0 when empty) */
+  left: number;
+  /** seconds the cup at the station has waited (drives the speed bonus) */
+  wait: number;
 }
 
 export interface Puddle {
@@ -139,6 +161,7 @@ export type GameEvent =
   | { type: 'topping'; cup: Cup }
   | { type: 'toppingMiss' }
   | { type: 'lap'; cup: Cup }
+  | { type: 'scoop'; flavour: number }
   | { type: 'clean'; x: number; y: number }
   | { type: 'go' }
   | { type: 'win'; reason: string }
@@ -192,6 +215,7 @@ export interface Round {
   cups: Cup[];
   belt: { phase: 'dwell' | 'slide'; t: number; dwellT: number; dwellLeft: number; basePos: number };
   beltPos: number;
+  jar: Jar;
   flow: number[];
   holdT: number[];
   hold: boolean[];

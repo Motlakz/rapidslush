@@ -52,7 +52,7 @@ export const CHALLENGES: { id: string; text: string; goal: number; key: Challeng
 export const MACHINES = [
   { id: 'belt', name: 'Slush Line', blurb: 'Conveyor belt, up to three taps' },
   { id: 'spin', name: 'Spin Bar', blurb: 'The turntable, one nozzle, up to five flavours' },
-  { id: 'blend', name: 'Blend Station', soon: true },
+  { id: 'blend', name: 'Blend Station', blurb: 'Scoop, blend to smooth, pour to the line' },
   { id: 'swirl', name: 'Swirl Tower', soon: true },
   { id: 'shave', name: 'Ice Shaver', soon: true },
 ] as const;

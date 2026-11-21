@@ -1,6 +1,7 @@
 export * from './constants';
 export * from './types';
-export { CHAPTERS, MAX_LEVEL, SCHEDULE, SPIN, SPIN_CHAPTERS, SPIN_SCHEDULE, levelConfig, mulberry32, spinConfig } from './levels';
+export { BLEND, BLEND_CHAPTERS, BLEND_SCHEDULE, CHAPTERS, MAX_LEVEL, SCHEDULE, SPIN, SPIN_CHAPTERS, SPIN_SCHEDULE, blendConfig, levelConfig, mulberry32, spinConfig } from './levels';
+export { BLADE, POUR, scoop, stationCup } from './blend';
 export { cupUnder } from './conveyor';
 export { comboMult } from './scoring';
 export { clean, puddleR } from './spills';

@@ -23,3 +23,16 @@ export function useUi() {
     safe: { top: ins.top / ui, right: ins.right / ui, bottom: ins.bottom / ui, left: ins.left / ui },
   };
 }
+
+/**
+ * Menu type scale. Menus are designed for a ~720pt-tall screen; on a landscape phone (short side ~360–430pt) the same
+ * sizes overflow the cards and make buttons enormous. Text and padding scale with the short side, down to 0.72, and
+ * every size has a floor so nothing drops under 14pt (body text stays 16pt). Tablets and desktop are untouched (1).
+ */
+export function useTypeK() {
+  const { width, height } = useWindowDimensions();
+  return Math.max(0.72, Math.min(1, Math.min(width, height) / 620));
+}
+
+/** A design size at type scale k, never under its floor. */
+export const fz = (size: number, k: number, floor: number) => Math.max(floor, Math.round(size * k));

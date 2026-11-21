@@ -1,5 +1,6 @@
 // ScoringEngine + round end (plan §4.1). Pure functions of the cup and level config.
 import { CFG } from './constants';
+import { BLEND } from './levels';
 import { finalizeSpill } from './spills';
 import type { Cup, Round } from './types';
 import { emit } from './util';
@@ -22,11 +23,15 @@ export function judge(r: Round, c: Cup) {
   const layerErr = o.multi ? Math.max(...o.layers.map(l => Math.abs(c.vol[l.tap] - l.amt))) : 0;
   const layersOk = !o.multi || layerErr <= tol;
   const toppingOk = o.topping === c.topping;
-  const perfect = flavourOk && fillOk && layersOk && toppingOk && Math.abs(err) <= tol * 0.35 && (!o.multi || layerErr <= tol * 0.5);
-  const served = flavourOk && fillOk && toppingOk; // layers off = partial credit, still counts (plan §3.3)
+  // Blend Station: the jar's smoothness when it was poured must sit in the smooth band
+  const off = r.mode === 'blend' ? c.smooth - BLEND.CENTER : 0, blendOk = Math.abs(off) <= L.zone;
+  const perfect = flavourOk && fillOk && layersOk && toppingOk && blendOk && Math.abs(err) <= tol * 0.35
+    && (!o.multi || layerErr <= tol * 0.5) && Math.abs(off) <= L.zone * 0.45;
+  const served = flavourOk && fillOk && toppingOk && blendOk; // layers off = partial credit, still counts (plan §3.3)
 
   let label: string;
   if (!flavourOk) label = wrong > 3 ? 'Wrong flavour' : 'Missing flavour';
+  else if (!blendOk) label = off < 0 ? 'Too chunky' : 'Too watery';
   else if (c.overflowed) label = 'Spilled';
   else if (!fillOk) label = err < 0 ? 'Too little' : 'Too much';
   else if (!toppingOk) label = o.topping !== null ? 'No topping' : 'Extra topping';

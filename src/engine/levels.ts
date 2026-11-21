@@ -107,7 +107,7 @@ export function levelConfig(n: number, tune: Tune = {}): LevelConfig {
     flowMax: mix01(45, 85, d),
     persist: since('cleanup') >= 0, wasteEnds: since('strict') >= 0, wasteBudget: Math.round(mix01(90, 55, d)),
     slide: 0.55, dur: 0,
-    slots: 0, dir: 1, speed: 0, win: 0, maxLaps: 0,
+    slots: 0, dir: 1, speed: 0, win: 0, maxLaps: 0, zone: 0, frozen: 0,
   };
   const slack = mix01(1.6, 1.1, d) * (since('duo') >= 0 ? 1.05 : 1);
   L.dur = Math.round((L.quota + L.taps) * (L.dwell + L.slide) * slack);
@@ -157,6 +157,70 @@ export function spinConfig(n: number, tune: Tune = {}): LevelConfig {
     base: 30, accel: (70 + 30 * d) * (tune.accel ?? 1), flowMax: 60 + 20 * d,
     persist: n >= 4, wasteEnds: n >= 20, wasteBudget: Math.round(mix01(90, 60, d)), slide: 0.55,
     dur: Math.round(quota * (lap / slots) * 2.6 * mix01(1.5, 1.3, d) + 8),
-    slots, dir: n >= 24 && n % 2 === 0 ? -1 : 1, speed, win: 16 - 3 * d, maxLaps: 3,
+    slots, dir: n >= 24 && n % 2 === 0 ? -1 : 1, speed, win: 16 - 3 * d, maxLaps: 3, zone: 0, frozen: 0,
+  };
+}
+
+// ═══ Blend Station: scoop the ticket's flavours into a jar, blend to smooth, pour to the line, serve. ═══
+// The cup waits under the blender (no belt timer); the queue only moves when you serve. Same liquid, spill and scoring
+// systems as the other machines, plus one new skill: the smoothness meter, which coasts after you let go of BLEND.
+export const BLEND = {
+  /** the station under the blender, then the two waiting spots in the queue */
+  CX: 640, QX: [640, 420, 200] as const,
+  /** jar volume once anything is in it: enough to fill a cup and spill some */
+  JAR: 110,
+  /** the middle of the smooth band on the 0–1.25 meter */
+  CENTER: 0.62, METER_MAX: 1.25,
+  /** frozen fruit blends at this share of normal speed */
+  FROZEN: 0.6,
+  /** opens after this Slush Line level is beaten */
+  UNLOCK: 30, MAX_LEVEL: 30,
+} as const;
+export const BLEND_SCHEDULE: Omit<ScheduleEntry, 'key'>[] = [
+  { n: 1, name: 'Blend Station', isNew: 'The blender', intro: 'Tap the flavour on the ticket to drop it in the jar. Hold BLEND and let go when the needle reaches the smooth band: the blade keeps turning for a moment after you let go. Then hold POUR, let go on the line, and tap SERVE.' },
+  { n: 3, name: 'Double Scoop', isNew: 'Two-flavour blends', intro: 'Some tickets want two flavours blended together. Drop both in before you blend.' },
+  { n: 6, name: 'Mop Up', isNew: 'Cleanup', intro: 'Spills stay on the counter now. Swipe across a puddle to wipe it; any left at the end cost points.' },
+  { n: 9, name: 'Brain Freeze', isNew: 'Frozen fruit', intro: 'Tickets with a snowflake use frozen fruit. It blends slower, so hold BLEND longer.' },
+  { n: 12, name: 'Top Shelf', isNew: 'Toppings', intro: 'Some tickets want a topping. Press TOPPING before you serve.' },
+  { n: 16, name: 'Triple Blend', isNew: 'Three-flavour blends', intro: 'Some tickets want three flavours in one jar.' },
+  { n: 20, name: 'Fine Tune', isNew: 'Narrow band + waste limit', intro: 'The smooth band gets thinner, and from here a full waste meter ends the round.' },
+  { n: 25, name: 'Smoothie Storm', isNew: 'Rush hour', intro: 'The queue is longer and the speed bonus drains faster. Keep it moving.' },
+];
+export const BLEND_CHAPTERS = ['Whir', 'Pulse', 'Purée'];
+const BLEND_NAMES = ['Smoothie Shack', 'Pulse Check', 'Ice Crush', 'Purée Party', 'Frappé', 'Ice Breaker', 'Whirlwind', 'Silky Smooth', 'Froth', 'Fruit Punch'];
+
+export function blendConfig(n: number, tune: Tune = {}): LevelConfig {
+  const intro = BLEND_SCHEDULE.find(s => s.n === n);
+  const last = BLEND_SCHEDULE.filter(s => s.n <= n).pop()!;
+  const fresh = Math.max(0, 3 - (n - last.n)) / 3;
+  const boss = n % 10 === 0 && !intro;
+  const d = clamp01(1 - Math.exp(-(n - 1) / 22) - 0.08 * fresh + (boss ? 0.04 : 0));
+  const k = n < 3 ? 2 : n < 9 ? 3 : 4;
+  // flavour bins: fixed early, rotating once there are more flavours than bins
+  let flavours = k === 2 ? [0, 3] : k === 3 ? [0, 2, 3] : [0, 1, 3, 4];
+  if (n >= 20) {
+    const rnd = mulberry32(n * 4271);
+    flavours = [0, 1, 2, 3, 4, 5].map(f => [rnd(), f] as const).sort((a, b) => a[0] - b[0]).slice(0, k).map(x => x[1]).sort((a, b) => a - b);
+  }
+  const mix: Mix = { single: 1 };
+  if (n >= 3) mix.duo = Math.min(1, 0.4 + (n - 3) / 8);
+  if (n >= 16) mix.trio = Math.min(0.7, 0.3 + (n - 16) / 10);
+  const topping = n >= 12 && n % 3 !== 2 ? n % 4 : null;
+  const quota = n === 1 ? 3 : Math.round(3 + 5 * d) + (boss ? 1 : 0);
+  const dwell = (n >= 25 ? mix01(7.5, 5, d) : mix01(10, 6.5, d)) * (tune.dwell ?? 1);
+  return {
+    mode: 'blend', badge: 'BLEND', n,
+    name: intro ? intro.name : BLEND_NAMES[(n * 3) % BLEND_NAMES.length],
+    chapter: Math.ceil(n / 10), chapterName: BLEND_CHAPTERS[Math.min(2, Math.ceil(n / 10) - 1)],
+    isNew: intro ? intro.isNew : null, intro: intro ? intro.intro : null, boss, breather: false,
+    taps: k, flavours, mix, topping, toppingChance: topping === null ? 0 : 0.35, creep: 0,
+    quota, dwell,
+    tol: (6 + 6 * Math.exp(-(n - 1) / 10)) * (tune.tol ?? 1),
+    base: 20, accel: mix01(40, 70, d) * (tune.accel ?? 1), flowMax: mix01(50, 80, d),
+    persist: n >= 6, wasteEnds: n >= 20, wasteBudget: Math.round(mix01(80, 55, d)), slide: 0.55,
+    dur: Math.round(quota * dwell * mix01(1.7, 1.35, d) + 10),
+    slots: 3, dir: 1, speed: mix01(0.3, 0.48, d), win: 0, maxLaps: 0,
+    zone: (n >= 20 ? mix01(0.12, 0.08, d) : mix01(0.17, 0.12, d)) * (tune.tol ?? 1),
+    frozen: n >= 9 ? Math.min(0.5, 0.25 + (n - 9) / 20) : 0,
   };
 }

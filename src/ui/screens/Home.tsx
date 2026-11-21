@@ -1,23 +1,24 @@
 'use no memo'; // reads mutable game state (save, controller); compiler memoisation would show stale values
 import { ScrollView } from 'react-native';
 
-import { SPIN } from '@/engine';
 import { newAttract } from '@/game/controller';
 import { CHALLENGES, LIVES, LOCATIONS, MACHINES, playerLevel } from '@/game/content';
+import { MACHINE } from '@/game/machines';
 import { show } from '@/game/ui-store';
 import { track } from '@/services/analytics';
 import { setMachine } from '@/services/save';
-import { Server, maxFor, spinUnlocked, trackOf } from '@/services/server';
+import { Server, currentMachine, machineOpen, maxFor, trackOf } from '@/services/server';
 import { CoinIcon, GearIcon, HeartIcon, LockIcon } from '../icons';
 import { Bar, Btn, BtnText, Card, Col, CostChip, H1, H3, Num, Pill, Row, Small, Spacer, Tag } from '../kit';
 import { C } from '../theme';
-import { useUi } from '../scale';
+import { useTypeK, useUi } from '../scale';
 import { LivesCard, LivesPill, Screen, useSave } from './common';
 
 export function Home() {
   const S = useSave();
   const { safe, availH } = useUi();
-  const m = S.machine === 'spin' && spinUnlocked() ? 'spin' : 'belt', T = trackOf(m), n = Math.min(T.highest, maxFor(m));
+  const compact = useTypeK() < 0.9; // a landscape phone: a tighter layout keeps the Play button in view
+  const m = currentMachine(), T = trackOf(m), n = Math.min(T.highest, maxFor(m));
   const pl = playerLevel(S.progress.xp), mach = MACHINES.find(x => x.id === m)!;
   const ch = S.challenge, def = ch && CHALLENGES.find(c => c.id === ch.id), risk = Server.atRisk(n, m);
 
@@ -42,24 +43,24 @@ export function Home() {
           No pointerEvents="box-none" here: on Android a scroll view that can't be the touch target never scrolls, and
           the attract round behind takes no input anyway. */}
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexDirection: 'row', flexGrow: 1, gap: 22, paddingTop: 104 + safe.top, paddingBottom: 34 + safe.bottom, paddingLeft: 40 + safe.left, paddingRight: 40 + safe.right }}>
-        <Card style={{ flex: 1, maxWidth: 500, gap: 16, padding: 28, alignSelf: 'flex-start' }}>
+        contentContainerStyle={{ flexDirection: 'row', flexGrow: 1, gap: 22, paddingTop: (compact ? 76 : 104) + safe.top, paddingBottom: (compact ? 16 : 34) + safe.bottom, paddingLeft: 40 + safe.left, paddingRight: 40 + safe.right }}>
+        <Card style={{ flex: 1, maxWidth: 500, gap: compact ? 12 : 16, padding: 28, alignSelf: 'flex-start' }}>
           <Row style={{ gap: 8, flexWrap: 'wrap' }}><Tag tone="mango">Beach Shack</Tag><Tag>{`${mach.name} · Level ${n} of ${maxFor(m)}`}</Tag></Row>
-          <H1 style={{ fontSize: 58, lineHeight: 62 }}>{'Rapid\nSlush'}</H1>
+          <H1 style={{ fontSize: 58, lineHeight: 62 }}>{compact ? 'Rapid Slush' : 'Rapid\nSlush'}</H1>
           <Row style={{ gap: 8, flexWrap: 'wrap' }}>
             {MACHINES.map(x => {
               if ('soon' in x) return <Tag key={x.id} icon={<LockIcon s={17} />}>{x.name}</Tag>;
-              const locked = x.id === 'spin' && !spinUnlocked();
+              const locked = !machineOpen(x.id);
               return (
                 <Btn key={x.id} size="sm" flat tone={x.id === m ? 'ink' : 'default'} disabled={locked}
                   onPress={() => { track('machine_selected', { machine: x.id, source: 'home' }); setMachine(x.id); newAttract(); }}>
-                  {locked ? <><LockIcon s={18} /><BtnText size="sm">{`${x.name} · Lv ${SPIN.UNLOCK}`}</BtnText></> : <BtnText size="sm" tone={x.id === m ? 'ink' : 'default'}>{x.name}</BtnText>}
+                  {locked ? <><LockIcon s={18} /><BtnText size="sm">{`${x.name} · Lv ${MACHINE[x.id].unlockAt}`}</BtnText></> : <BtnText size="sm" tone={x.id === m ? 'ink' : 'default'}>{x.name}</BtnText>}
                 </Btn>
               );
             })}
           </Row>
           <Btn tone="berry" size="big" onPress={() => show({ name: 'intro', n, m })} label={`Play level ${n}`}>
-            <BtnText tone="berry" size="big">{`Play ${m === 'spin' ? 'Spin' : 'Level'} ${n}`}</BtnText>
+            <BtnText tone="berry" size="big">{`Play ${MACHINE[m].short} ${n}`}</BtnText>
             <CostChip cost={risk ? 1 : 0}>{risk ? <HeartIcon s={22} /> : null}</CostChip>
           </Btn>
           <Row style={{ gap: 10 }}>

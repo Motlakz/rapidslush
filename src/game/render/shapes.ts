@@ -65,3 +65,13 @@ export function drawToppingIcon(g: Painter, k: number, x: number, y: number, s: 
   }
   g.restore();
 }
+
+/** Frozen fruit (Blend Station tickets and jar). */
+export function drawSnowflake(g: Painter, x: number, y: number, s: number, c: string) {
+  g.lineWidth = Math.max(1.5, s / 4); g.lineCap = 'round';
+  for (let q = 0; q < 3; q++) {
+    const a = (q * Math.PI) / 3, dx = Math.cos(a) * s, dy = Math.sin(a) * s;
+    g.beginPath(); g.moveTo(x - dx, y - dy); g.lineTo(x + dx, y + dy); g.stroke(c);
+  }
+  g.lineCap = 'butt';
+}

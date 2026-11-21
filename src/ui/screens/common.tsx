@@ -29,15 +29,17 @@ export function Screen({ children, clear }: { children: ReactNode; clear?: boole
 /**
  * A menu card at its designed width, clamped to the safe area, never taller than the screen. Content scrolls when
  * it runs tall (phones at the 16pt text floor). Panels that manage their own scrolling (level grid, wallet ledger)
- * pass scroll={false}.
+ * pass scroll={false}. `footer` holds the card's main action: it sits under the scrolling content and never scrolls
+ * away, so Start / Next level stay on screen on short phones.
  */
-export function Panel({ children, width, style, onClose, closeLabel = 'Close', scroll = true }: {
-  children: ReactNode; width: number; style?: StyleProp<ViewStyle>; onClose?: () => void; closeLabel?: string; scroll?: boolean;
+export function Panel({ children, width, style, onClose, closeLabel = 'Close', scroll = true, footer }: {
+  children: ReactNode; width: number; style?: StyleProp<ViewStyle>; onClose?: () => void; closeLabel?: string; scroll?: boolean; footer?: ReactNode;
 }) {
   const { availW, availH } = useUi();
   return (
     <Card style={[{ width: Math.min(width, availW - 16), maxHeight: availH - 16, gap: 14 }, style]}>
       {scroll ? <ScrollView style={st.scroll} contentContainerStyle={st.content}>{children}</ScrollView> : children}
+      {footer}
       {onClose && (
         <View style={st.x}>
           <Btn icon size="sm" onPress={onClose} label={closeLabel}><CloseIcon /></Btn>

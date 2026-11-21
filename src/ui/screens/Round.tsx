@@ -2,6 +2,7 @@
 // In-round panels: Pause, Results, and the Lives panel (also opened from the top bar).
 import { type Mode, type RoundResult } from '@/engine';
 import { App, cfgFor, goHome, nextLevel, quitRound, restartRound, resumeRound, startLevel } from '@/game/controller';
+import { MACHINE } from '@/game/machines';
 import { glassFor } from '@/game/content';
 import { show } from '@/game/ui-store';
 import { C } from '../theme';
@@ -47,15 +48,14 @@ export function Pause() {
 
 export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> }) {
   const S = useSave();
-  const m = res.mode, spin = m === 'spin', L = cfgFor(res.level, m), maxL = maxFor(m);
+  const m = res.mode, M = MACHINE[m], L = cfgFor(res.level, m), maxL = maxFor(m);
   const title = res.win ? (res.stars === 3 ? 'Flawless!' : 'Quota met!') : res.reason === 'flooded' ? 'Flooded!' : "Time's up";
   const body = res.win
     ? rw.unlocked ? `Level ${rw.unlocked} is open.` : 'Nice shift.'
     : res.reason === 'flooded' ? 'The waste meter filled up. Release a bit earlier: the tap keeps dripping.'
-      : spin ? `You served ${res.served} of ${res.quota}. Pick the flavour before the cup reaches the window, so every pass counts.`
-        : `You served ${res.served} of ${res.quota}. Tap SEND as soon as the cups are full to keep the belt moving.`;
+      : `You served ${res.served} of ${res.quota}. ${M.failHint}`;
   const lives = Server.lives(), nextN = Math.min(res.level + 1, maxL);
-  const glassNext = !spin && res.win && res.level < MAX_LEVEL && glassFor(res.level + 1).tier > glassFor(res.level).tier ? glassFor(res.level + 1) : null;
+  const glassNext = m === 'belt' && res.win && res.level < MAX_LEVEL && glassFor(res.level + 1).tier > glassFor(res.level).tier ? glassFor(res.level + 1) : null;
 
   // Out of lives for a retry: say when the next one comes and how to keep playing. After 3 fails suggest an easier level.
   // The suggestion is anchored to their top level (the wall), not to whichever level they just replayed: it stays one
@@ -83,9 +83,22 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
 
   return (
     <Screen>
-      <Panel width={960}>
+      <Panel width={960} footer={(
+        <Row style={{ marginTop: 4 }}>
+          {res.win && res.level < maxL ? (
+            <>
+              <PlayBtn title="Next level" n={nextN} m={m} onPress={() => nextLevel(nextN, m)} />
+              <Btn onPress={() => startLevel(res.level, m)}>Replay</Btn>
+            </>
+          ) : (
+            <PlayBtn title="Try again" n={res.level} m={m} onPress={() => startLevel(res.level, m)} />
+          )}
+          <Spacer />
+          <Btn onPress={goHome}>Menu</Btn>
+        </Row>
+      )}>
         <Row>
-          <Tag tone={res.win ? 'lime' : 'berry'}>{`${spin ? 'Spin Bar' : 'Level'} ${res.level} · ${L.name}`}</Tag>
+          <Tag tone={res.win ? 'lime' : 'berry'}>{`${m === 'belt' ? 'Level' : M.name} ${res.level} · ${L.name}`}</Tag>
           <Spacer />
           <Row style={{ gap: 6 }}><Stars n={res.stars} /></Row>
         </Row>
@@ -112,23 +125,11 @@ export function Results({ res, rw }: { res: RoundResult; rw: Partial<Rewards> })
           <Tag tone="mango">{`+${rw.coins || 0} coins`}</Tag>
           {rw.lifeBack && <Tag tone="berry">Life kept</Tag>}
           {!!rw.lives && <Tag tone="berry">{`+${rw.lives} life`}</Tag>}
-          {rw.spinUnlocked && <Tag tone="razz">New machine: Spin Bar is open!</Tag>}
+          {rw.opened && <Tag tone="razz">{`New machine: ${MACHINE[rw.opened].name} is open!`}</Tag>}
           {glassNext && <Tag tone="razz">{`Next level: the shack gets ${glassNext.name.toLowerCase()}!`}</Tag>}
           {rw.challenge && <Tag tone="razz">{`Challenge done: ${rw.challenge}`}</Tag>}
         </Row>
         {offer}
-        <Row style={{ marginTop: 4 }}>
-          {res.win && res.level < maxL ? (
-            <>
-              <PlayBtn title="Next level" n={nextN} m={m} onPress={() => nextLevel(nextN, m)} />
-              <Btn onPress={() => startLevel(res.level, m)}>Replay</Btn>
-            </>
-          ) : (
-            <PlayBtn title="Try again" n={res.level} m={m} onPress={() => startLevel(res.level, m)} />
-          )}
-          <Spacer />
-          <Btn onPress={goHome}>Menu</Btn>
-        </Row>
       </Panel>
     </Screen>
   );

@@ -14,6 +14,16 @@ export function makeOrder(r: Round): Order {
   let total = 5 * Math.round((60 + rng() * 25) / 5);
   let layers: Layer[];
   const taps = [...Array(L.taps).keys()];
+  if (L.mode === 'blend') {
+    // a blend: the ticket's flavours in equal shares, one fill line; frozen fruit blends slower
+    const want = type === 'trio' ? 3 : type === 'duo' ? 2 : 1;
+    const pick = taps.slice().sort(() => rng() - 0.5).slice(0, want).sort((x, y) => x - y);
+    const topping = L.topping !== null && rng() < L.toppingChance ? L.topping : null;
+    return {
+      type, layers: pick.map(tap => ({ tap, amt: total / want })), total, topping, multi: false,
+      frozen: L.frozen > 0 && rng() < L.frozen,
+    };
+  }
   if (type === 'single') {
     layers = [{ tap: taps[Math.floor(rng() * taps.length)], amt: total }];
   } else if (type === 'trio') {
@@ -32,7 +42,7 @@ export function makeOrder(r: Round): Order {
     }
   }
   const topping = L.topping !== null && rng() < L.toppingChance ? L.topping : null;
-  return { type, layers, total, topping, multi: layers.length > 1 };
+  return { type, layers, total, topping, multi: layers.length > 1, frozen: false };
 }
 
 export function newCup(r: Round): Cup {
@@ -40,6 +50,6 @@ export function newCup(r: Round): Cup {
     id: ++r.cid, order: makeOrder(r), slot: 0, x: ENTRY_X, fromX: ENTRY_X, toX: ENTRY_X,
     vol: [0, 0, 0, 0, 0], seq: [], total: 0, overflowed: false, ovAt: 0, topping: null, topAt: 0,
     spare: 0, visits: 0, judged: false, verdict: null, judgedAt: 0, wob: 0, seed: Math.floor(r.rng() * 1e9),
-    leaving: false, vx: 0, laps: 0, inWin: false, p: null,
+    leaving: false, vx: 0, laps: 0, inWin: false, p: null, smooth: -1,
   };
 }

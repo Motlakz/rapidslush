@@ -2,7 +2,9 @@
 // handed back on a win, settlement with plausibility checks. Runs on-device against the save; the same contract can
 // move behind an API later.
 import { CHALLENGES, CUPS, LIVES, SKINS, playerLevel } from '@/game/content';
-import { MAX_LEVEL, SPIN, type Mode, type RoundResult } from '@/engine';
+import { BLEND, MAX_LEVEL, SPIN, type Mode, type RoundResult } from '@/engine';
+import { MACHINE, MACHINE_ORDER } from '@/game/machines';
+import { SHACKS } from '@/game/shacks';
 import { track } from './analytics';
 import { flush, persist, save, uid, type Currency, type Lives, type Rewards, type Session, type Track } from './save';
 
@@ -11,15 +13,25 @@ export const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+/** Each machine keeps its own level track; the Slush Line's is the progress record itself. */
 export const trackOf = (m: Mode): Track => {
   const P = save().progress;
-  if (m !== 'spin') return P;
-  return P.spin ?? (P.spin = { highest: 1, stars: {}, best: {} });
+  if (m === 'belt') return P;
+  return P[m] ?? (P[m] = { highest: 1, stars: {}, best: {} });
 };
-export const maxFor = (m: Mode) => (m === 'spin' ? SPIN.MAX_LEVEL : MAX_LEVEL);
-export const spinUnlocked = () => save().progress.highest > SPIN.UNLOCK;
+export const maxFor = (m: Mode) => MACHINE[m].max;
+/** Machines open as the Slush Line is beaten: the Spin Bar after level 15, the Blend Station after level 30. */
+export const machineOpen = (m: Mode) => save().progress.highest > MACHINE[m].unlockAt;
+export const spinUnlocked = () => machineOpen('spin');
+/** The machine to show on Home: the last one played, if it is open. */
+export const currentMachine = (): Mode => {
+  const m = save().machine;
+  return m && machineOpen(m) ? m : 'belt';
+};
 /** Dev tuning panel only. */
-export function unlockAll() { save().progress.highest = MAX_LEVEL; trackOf('spin').highest = SPIN.MAX_LEVEL; persist(); }
+export function unlockAll() {
+  save().progress.highest = MAX_LEVEL; trackOf('spin').highest = SPIN.MAX_LEVEL; trackOf('blend').highest = BLEND.MAX_LEVEL; persist();
+}
 
 /**
  * Lives right now from the stored snapshot, without writing anything (safe to call while rendering). A clock wound
@@ -135,8 +147,8 @@ export const Server = {
     if (s.status !== 'ACTIVE') return s.settlement ? { ok: true, ...s.settlement, replay: true } : { ok: false, error: 'NOT_ACTIVE' };
     // plausibility checks (plan §11.2)
     const plausible = res.score <= res.served * 1500 + 2000 && res.elapsed >= res.served * 0.5;
-    const P = S.progress, T = trackOf(res.mode), maxL = maxFor(res.mode), mk = res.mode === 'spin' ? 'spin:' : '';
-    const rewards: Rewards = { xp: 0, coins: 0, lives: 0, lifeBack: false, levelUp: false, unlocked: null, challenge: null, firstClear: false, spinUnlocked: false };
+    const P = S.progress, T = trackOf(res.mode), maxL = maxFor(res.mode), mk = res.mode === 'belt' ? '' : res.mode + ':';
+    const rewards: Rewards = { xp: 0, coins: 0, lives: 0, lifeBack: false, levelUp: false, unlocked: null, challenge: null, firstClear: false, opened: null };
     // a win hands back the life the round took
     if (res.win && s.life) { settleLives(1); rewards.lifeBack = true; track('life_refunded', { level: res.level, machine: res.mode }); }
     if (plausible) {
@@ -153,7 +165,10 @@ export const Server = {
       T.stars[res.level] = Math.max(prevStars, res.stars);
       T.best[res.level] = Math.max(T.best[res.level] || 0, res.score);
       if (res.win && res.level + 1 > T.highest && res.level < maxL) { T.highest = res.level + 1; rewards.unlocked = res.level + 1; }
-      if (spinUnlocked() && !S.flags.spinSeen) { S.flags.spinSeen = true; rewards.spinUnlocked = true; }
+      for (const m of MACHINE_ORDER) { // a machine this win opened, announced once
+        const seen = m === 'spin' ? 'spinSeen' : m === 'blend' ? 'blendSeen' : null;
+        if (seen && machineOpen(m) && !S.flags[seen]) { S.flags[seen] = true; rewards.opened = m; }
+      }
       P.rounds++; P.perfect += res.perfect; P.spilled += res.waste;
       const lvBefore = playerLevel(P.xp).level;
       P.xp += rewards.xp;
@@ -182,8 +197,9 @@ export const Server = {
     return { ok: true, rewards, plausible };
   },
 
-  buyItem(kind: 'cups' | 'skins', id: string) {
-    const S = save(), list = kind === 'cups' ? CUPS : SKINS, it = list.find(x => x.id === id);
+  buyItem(kind: 'cups' | 'skins' | 'shacks', id: string) {
+    const S = save(), list: { id: string; price: number }[] = kind === 'cups' ? CUPS : kind === 'skins' ? SKINS : SHACKS;
+    const it = list.find(x => x.id === id);
     if (!it || S.inv[kind].includes(id)) return { ok: false };
     if (S.wallet.coins < it.price) return { ok: false, error: 'COINS' };
     this.ledger('COIN', -it.price, 'ITEM_UNLOCK', id, 'item:' + kind + ':' + id);
@@ -196,10 +212,10 @@ export const Server = {
   /** Dev tuning panel only. */
   devCoins(n: number) { this.ledger('COIN', n, 'DEV_GRANT', 'dev', 'dev:' + uid()); persist(); },
 
-  equip(kind: 'cups' | 'skins', id: string) {
+  equip(kind: 'cups' | 'skins' | 'shacks', id: string) {
     const S = save();
     if (!S.inv[kind].includes(id)) return;
-    if (kind === 'cups') S.inv.cup = id; else S.inv.skin = id;
+    if (kind === 'cups') S.inv.cup = id; else if (kind === 'skins') S.inv.skin = id; else S.inv.shack = id;
     persist();
   },
 };

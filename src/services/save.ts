@@ -21,7 +21,9 @@ export interface Session {
 }
 export interface Rewards {
   xp: number; coins: number; lives: number; lifeBack: boolean; levelUp: boolean; unlocked: number | null;
-  challenge: string | null; firstClear: boolean; spinUnlocked: boolean;
+  challenge: string | null; firstClear: boolean;
+  /** a machine this round opened (shown once, on the results screen) */
+  opened: Mode | null;
 }
 export interface Track { highest: number; stars: Record<number, number>; best: Record<number, number> }
 export interface Settings {
@@ -40,11 +42,12 @@ export interface Save {
   ledger: LedgerRow[];
   idem: Record<string, 1>;
   sessions: Record<string, Session>;
-  progress: Track & { xp: number; rounds: number; perfect: number; spilled: number; spin?: Track };
-  inv: { cups: string[]; skins: string[]; cup: string; skin: string };
+  progress: Track & { xp: number; rounds: number; perfect: number; spilled: number; spin?: Track; blend?: Track };
+  /** shacks/shack: themes (src/game/shacks.ts); saves from before themes get the Beach Shack at load */
+  inv: { cups: string[]; skins: string[]; cup: string; skin: string; shacks: string[]; shack: string };
   settings: Settings;
   challenge: { day: string; id: string; progress: number; done: boolean } | null;
-  flags: { livesNote: boolean; coach: boolean; spinSeen?: boolean; glass?: number };
+  flags: { livesNote: boolean; coach: boolean; spinSeen?: boolean; blendSeen?: boolean; glass?: number };
   stats: { fails: number; wins: number };
   machine?: Mode;
   tune: Tune;
@@ -54,7 +57,7 @@ export function freshSave(): Save {
   return {
     v: 1, playerId: uid(), createdAt: Date.now(), wallet: { coins: 0 }, lives: { n: LIVES.max, stamp: Date.now(), lastSeen: Date.now() },
     ledger: [], idem: {}, sessions: {}, progress: { xp: 0, highest: 1, stars: {}, best: {}, rounds: 0, perfect: 0, spilled: 0 },
-    inv: { cups: ['classic'], skins: ['copper'], cup: 'classic', skin: 'copper' },
+    inv: { cups: ['classic'], skins: ['copper'], cup: 'classic', skin: 'copper', shacks: ['beach'], shack: 'beach' },
     settings: { sound: true, haptics: true, reduced: false, sfxVol: 0.8, pourVol: 0.6, uiVol: 0.5 }, challenge: null,
     flags: { livesNote: false, coach: false }, stats: { fails: 0, wins: 0 },
     tune: { accel: 1, tol: 1, dwell: 1, infinite: false },
@@ -80,7 +83,10 @@ export async function loadSave() {
     const parsed = raw ? (JSON.parse(raw) as Save) : null;
     if (parsed && parsed.v === 1) {
       const base = freshSave();
-      SAVE = { ...base, ...parsed, settings: { ...base.settings, ...parsed.settings }, flags: { ...base.flags, ...parsed.flags }, tune: { ...base.tune, ...parsed.tune } };
+      SAVE = {
+        ...base, ...parsed, settings: { ...base.settings, ...parsed.settings }, flags: { ...base.flags, ...parsed.flags }, tune: { ...base.tune, ...parsed.tune },
+        inv: { ...base.inv, ...parsed.inv },
+      };
       firstLaunch = false;
     }
   } catch {

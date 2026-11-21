@@ -3,7 +3,8 @@ import { clamp, easeBack, lerp } from '@/engine/util';
 import { glassGeom, glassPath, roundGlass, uy, type GlassGeom } from './glass';
 import type { Painter } from './painter';
 import { flavourBadge } from './icons';
-import { INK, drawToppingIcon, drawWhip } from './shapes';
+import { cupFlavours, mixFlavours } from './mix';
+import { INK, drawSnowflake, drawToppingIcon, drawWhip } from './shapes';
 import { fillSlush, sparkle } from './textures';
 import type { RenderCtx } from './view';
 
@@ -39,6 +40,8 @@ export function drawCup(g: Painter, c: Cup, r: Round, t: number, ctx: RenderCtx)
   const x = c.x, design = ctx.cup, tol = r.L.tol, reduced = ctx.reduced;
   const GL = roundGlass(r), tier = GL.tier, G = glassGeom(GL.id), rimW = G.hw(G.yt);
   const topFi = () => r.L.flavours[(c.seq.filter(s => s.amt > 0).pop() ?? { tap: 0 }).tap];
+  // a Blend Station cup is one mixed colour, not layers
+  const blendF = r.mode === 'blend' && c.total > 0.3 ? mixFlavours(cupFlavours(r, c.vol)) : null;
   // shadow, pedestal foot (milkshake glass)
   g.beginPath(); g.ellipse(x, BELT_Y + 1, (G.stem ? 34 : G.hw(G.yb)) + 8, 5, 0, 0, 7); g.fill('rgba(37,35,58,.22)');
   if (G.stem) {
@@ -63,13 +66,13 @@ export function drawCup(g: Painter, c: Cup, r: Round, t: number, ctx: RenderCtx)
     let u0 = 0;
     for (const s of c.seq) {
       if (s.amt <= 0) continue;
-      const fi = r.L.flavours[s.tap], F = FL[fi], y1 = uy(G, u0 + s.amt), y0 = uy(G, u0);
+      const fi = r.L.flavours[s.tap], F = blendF ?? FL[fi], y1 = uy(G, u0 + s.amt), y0 = uy(G, u0);
       const fill = tier === 0 ? F.color : g.linear(x - rimW, 0, x + rimW, 0, [[0, F.deep], [0.38, F.color], [1, F.deep]]);
       g.fillRect(x - rimW - 4, y1 - 0.6, rimW * 2 + 8, y0 - y1 + 1.2, fill);
       if (tier >= 2) fillSlush(g, fi, x - rimW - 4, y1 - 0.6, rimW * 2 + 8, y0 - y1 + 1.2, x);
       u0 += s.amt;
     }
-    const TF = FL[topFi()];
+    const TF = blendF ?? FL[topFi()];
     if (tier === 1) {
       for (const [u, v, rad] of cupSpecks(c)) {
         const py = lerp(G.liqB - 4, G.liqT, u);
@@ -160,7 +163,7 @@ export function drawCup(g: Painter, c: Cup, r: Round, t: number, ctx: RenderCtx)
 
   // overflow
   if (c.overflowed) {
-    const F = FL[topFi()], k = clamp((r.clock - c.ovAt) * 1.6, 0, 1);
+    const F = blendF ?? FL[topFi()], k = clamp((r.clock - c.ovAt) * 1.6, 0, 1);
     g.beginPath(); g.ellipse(x, G.yt - 2, rimW + 2, 11, 0, Math.PI, 0); g.fill(F.color);
     g.lineCap = 'round';
     for (const [side, len, w] of [[-1, 0.9, 9], [1, 0.6, 7], [0.35, 0.75, 6]]) {
@@ -244,10 +247,12 @@ function drawToppingOnCup(g: Painter, c: Cup, G: GlassGeom, x: number, surf: num
 
 function drawTargets(g: Painter, c: Cup, r: Round, G: GlassGeom, x: number, rimW: number, tol: number, tier: number) {
   let cum = 0, prevY = -1e9, prevLeft = false;
-  const o = c.order;
-  o.layers.forEach((l, k) => {
+  const o = c.order, blend = r.mode === 'blend';
+  // a blend has one fill line however many flavours went in
+  const marks = blend ? [{ tap: o.layers[0].tap, amt: o.total }] : o.layers;
+  marks.forEach((l, k) => {
     cum += l.amt;
-    const last = k === o.layers.length - 1, y = uy(G, cum), yA = uy(G, cum + tol), yB = uy(G, cum - tol), F = FL[r.L.flavours[l.tap]];
+    const last = k === marks.length - 1, y = uy(G, cum), yA = uy(G, cum + tol), yB = uy(G, cum - tol), F = FL[r.L.flavours[l.tap]];
     g.save(); glassPath(g, G, x, 3); g.clip();
     g.fillRect(x - rimW - 4, yA, rimW * 2 + 8, yB - yA, last ? 'rgba(255,255,255,.30)' : 'rgba(255,255,255,.18)');
     g.restore();
@@ -259,12 +264,24 @@ function drawTargets(g: Painter, c: Cup, r: Round, G: GlassGeom, x: number, rimW
     g.moveTo(x + hA + 5, yA); g.lineTo(x + hA, yA); g.lineTo(x + hB, yB); g.lineTo(x + hB + 5, yB); g.stroke(ink);
     // flavour badge beside the mark; flips to the other side when two marks sit too close to share one
     const left = Math.abs(y - prevY) < 34 && !prevLeft;
-    flavourBadge(g, F, left ? x - G.hw(y) - 20 : x + G.hw(y) + 26, y, 15);
+    if (!blend) flavourBadge(g, F, left ? x - G.hw(y) - 20 : x + G.hw(y) + 26, y, 15);
     prevY = y; prevLeft = left;
   });
 }
 
+/** Order tickets grow on small screens (StageLayout.ticketK) so their numbers stay readable; capped so neighbours never touch. */
+let TICKET_K = 1;
+export const setTicketScale = (k: number) => { TICKET_K = k; };
 export function drawTicket(g: Painter, c: Cup, r: Round) {
+  const o = c.order, n = o.layers.length + (o.topping !== null ? 1 : 0) + (o.frozen ? 1 : 0);
+  const k = Math.min(TICKET_K, 228 / Math.max(96, n * 50 + 16)), y = BELT_Y + 24;
+  if (k === 1) return drawTicketAt(g, c, r);
+  g.save(); g.translate(c.x, y); g.scale(k, k); g.translate(-c.x, -y);
+  drawTicketAt(g, c, r);
+  g.restore();
+}
+function drawTicketAt(g: Painter, c: Cup, r: Round) {
+  if (r.mode === 'blend') return drawBlendTicket(g, c, r);
   const o = c.order, n = o.layers.length + (o.topping !== null ? 1 : 0), w = Math.max(90, n * 50 + 16), x = c.x - w / 2, y = BELT_Y + 24;
   g.rr(x, y + 3, w, 44, 13); g.fill('rgba(37,35,58,.18)');
   g.rr(x, y, w, 44, 13); g.fill(c.judged ? (c.verdict?.ok ? '#E8F5D2' : '#FFE0E7') : '#FFFFFF');
@@ -283,5 +300,24 @@ export function drawTicket(g: Painter, c: Cup, r: Round) {
     g.fillCircle(cx - 4, y + 22, 14, INK);
     drawToppingIcon(g, o.topping, cx - 4, y + 23, 0.75);
     if (c.topping !== null) { g.lineWidth = 3; g.circle(cx - 4, y + 22, 16); g.stroke('#6E9F2B'); }
+  }
+}
+
+/** Blend Station ticket: the flavours that go in the jar, the fill amount, a snowflake for frozen fruit, the topping. */
+function drawBlendTicket(g: Painter, c: Cup, r: Round) {
+  const o = c.order;
+  const w = Math.max(96, o.layers.length * 34 + 54 + (o.frozen ? 34 : 0) + (o.topping !== null ? 36 : 0) + 12), x = c.x - w / 2, y = BELT_Y + 24;
+  g.rr(x, y + 3, w, 44, 13); g.fill('rgba(37,35,58,.18)');
+  g.rr(x, y, w, 44, 13); g.fill(c.judged ? (c.verdict?.ok ? '#E8F5D2' : '#FFE0E7') : '#FFFFFF');
+  g.fillCircle(c.x, y + 1, 3, '#C9C2B4');
+  let cx = x + 22;
+  for (const l of o.layers) { flavourBadge(g, FL[r.L.flavours[l.tap]], cx, y + 22, 14); cx += 34; }
+  g.text(String(Math.round(o.total)), cx + 10, y + 23, { size: 16, f: 'num', c: INK });
+  cx += 46;
+  if (o.frozen) { g.fillCircle(cx - 4, y + 22, 14, '#C4EDFC'); drawSnowflake(g, cx - 4, y + 22, 8, '#1B8FC0'); cx += 34; }
+  if (o.topping !== null) {
+    g.fillCircle(cx - 2, y + 22, 14, INK);
+    drawToppingIcon(g, o.topping, cx - 2, y + 23, 0.75);
+    if (c.topping !== null) { g.lineWidth = 3; g.circle(cx - 2, y + 22, 16); g.stroke('#6E9F2B'); }
   }
 }

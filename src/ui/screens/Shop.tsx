@@ -5,6 +5,7 @@ import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 import { goHome } from '@/game/controller';
 import { CUPS, SKINS, type CupDesign, type Skin } from '@/game/content';
+import { SHACKS, type ShackTheme } from '@/game/shacks';
 import { show, toast, useUI } from '@/game/ui-store';
 import { Sound } from '@/services/feedback';
 import { Server } from '@/services/server';
@@ -80,13 +81,34 @@ function SkinPreview({ s }: { s: Skin }) {
   );
 }
 
-let collTab: 'cups' | 'skins' = 'cups';
+/** A shack theme in miniature: awning, noon sky and sea, sand, the back wall and the counter, all flat. */
+function ShackPreview({ s }: { s: ShackTheme }) {
+  const d = s.skies[0];
+  return (
+    <Svg width={150} height={90} viewBox="0 0 150 90">
+      <Rect x={0} y={0} width={150} height={90} rx={12} fill={d.sky[1]} />
+      <Rect x={0} y={12} width={150} height={18} fill={d.sky[0]} />
+      <Circle cx={122} cy={30} r={9} fill={d.sun.c} />
+      <Rect x={0} y={40} width={150} height={10} fill={d.sea[0]} />
+      <Rect x={0} y={50} width={150} height={5} fill={d.sand} />
+      <Rect x={0} y={55} width={150} height={20} fill={d.wall} />
+      <Rect x={0} y={75} width={150} height={15} fill={s.counter[0]} />
+      <Path d="M28 50 Q30 34 36 26" stroke={d.trunk} strokeWidth={4} fill="none" strokeLinecap="round" />
+      <Ellipse cx={36} cy={26} rx={12} ry={5} fill={d.foliage} />
+      {[0, 1, 2, 3, 4, 5].map(k => <Rect key={k} x={k * 25} y={0} width={25} height={12} fill={s.awning[k % 2]} />)}
+      {[0, 1, 2, 3, 4, 5].map(k => <Circle key={'c' + k} cx={k * 25 + 12.5} cy={12} r={12.5} fill={s.awning[k % 2]} />)}
+      {s.snow && [20, 60, 92, 140].map(x => <Circle key={'s' + x} cx={x} cy={34 + (x % 7)} r={1.6} fill="#fff" />)}
+    </Svg>
+  );
+}
+
+let collTab: 'cups' | 'skins' | 'shacks' = 'cups';
 export function Collection() {
   const S = useSave();
   useUI(st => st.overlay); // re-render on tab switch (show() with the same overlay name)
-  const owned = S.inv[collTab], eq = collTab === 'cups' ? S.inv.cup : S.inv.skin;
-  const list: (CupDesign | Skin)[] = collTab === 'cups' ? CUPS : SKINS;
-  const setTab = (t: 'cups' | 'skins') => { collTab = t; show({ name: 'collection' }); };
+  const owned = S.inv[collTab], eq = collTab === 'cups' ? S.inv.cup : collTab === 'skins' ? S.inv.skin : S.inv.shack;
+  const list: (CupDesign | Skin | ShackTheme)[] = collTab === 'cups' ? CUPS : collTab === 'skins' ? SKINS : SHACKS;
+  const setTab = (t: typeof collTab) => { collTab = t; show({ name: 'collection' }); };
   return (
     <Screen>
       <Panel width={920} style={{ gap: 16 }} onClose={goHome}>
@@ -95,6 +117,7 @@ export function Collection() {
           <Row style={{ gap: 8, marginLeft: 12 }}>
             <Btn size="sm" flat tone={collTab === 'cups' ? 'ink' : 'default'} onPress={() => setTab('cups')}><BtnText size="sm" tone={collTab === 'cups' ? 'ink' : 'default'}>Cups</BtnText></Btn>
             <Btn size="sm" flat tone={collTab === 'skins' ? 'ink' : 'default'} onPress={() => setTab('skins')}><BtnText size="sm" tone={collTab === 'skins' ? 'ink' : 'default'}>Machines</BtnText></Btn>
+            <Btn size="sm" flat tone={collTab === 'shacks' ? 'ink' : 'default'} onPress={() => setTab('shacks')}><BtnText size="sm" tone={collTab === 'shacks' ? 'ink' : 'default'}>Shacks</BtnText></Btn>
           </Row>
           <Spacer />
           <View style={{ marginRight: 56 }}><Pill><CoinIcon /><Num style={{ fontSize: 19 }}>{S.wallet.coins}</Num></Pill></View>
@@ -104,7 +127,7 @@ export function Collection() {
             const has = owned.includes(it.id), on = eq === it.id;
             return (
               <View key={it.id} style={[ss.item, { width: collTab === 'cups' ? 199 : 270 }, on && ss.itemEq]}>
-                {collTab === 'cups' ? <CupPreview d={it as CupDesign} /> : <SkinPreview s={it as Skin} />}
+                {collTab === 'cups' ? <CupPreview d={it as CupDesign} /> : collTab === 'skins' ? <SkinPreview s={it as Skin} /> : <ShackPreview s={it as ShackTheme} />}
                 <B>{it.name}</B>
                 {on ? <Tag tone="lime" style={{ alignSelf: 'center' }}>Equipped</Tag>
                   : has ? <Btn size="sm" onPress={() => { Server.equip(collTab, it.id); Sound.sfx('tap'); }}>Equip</Btn>
@@ -118,7 +141,7 @@ export function Collection() {
             );
           })}
         </View>
-        <Small>Looks only. Cups and machines never change how fast you pour or how wide the band is.</Small>
+        <Small>Looks only. Cups, machines and shacks never change how fast you pour or how wide the band is.</Small>
       </Panel>
     </Screen>
   );
